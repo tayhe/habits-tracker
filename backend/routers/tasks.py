@@ -1,22 +1,22 @@
+import sqlite3
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from models import TaskCreate, TaskUpdate, TaskOut
-from database import get_connection
+from database import get_db
+from auth import get_current_user, require_parent
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 def get_all_tasks():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tasks ORDER BY sort_weight DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tasks ORDER BY sort_weight DESC")
+        return [dict(row) for row in cursor.fetchall()]
 
 
 @router.get("", response_model=List[TaskOut])
-def list_tasks():
+def list_tasks(user: dict = Depends(get_current_user)):
     tasks = get_all_tasks()
     return [
         TaskOut(
@@ -33,27 +33,23 @@ def list_tasks():
 
 
 @router.post("")
-def create_task(task: TaskCreate):
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            """INSERT INTO tasks (task_id, subject, name, reward, weekly_min, sort_weight)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (task.task_id, task.subject, task.name, task.reward, task.weekly_min, task.sort_weight)
-        )
-        conn.commit()
-        return {"message": "Task created", "task_id": task.task_id}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    finally:
-        conn.close()
+def create_task(task: TaskCreate, user: dict = Depends(require_parent)):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """INSERT INTO tasks (task_id, subject, name, reward, weekly_min, sort_weight)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (task.task_id, task.subject, task.name, task.reward, task.weekly_min, task.sort_weight)
+            )
+            conn.commit()
+        except sqlite3.IntegrityError as e:
+            raise HTTPException(status_code=400, detail=f"Task already exists or invalid data: {e}")
+    return {"message": "Task created", "task_id": task.task_id}
 
 
 @router.put("/{task_id}")
-def update_task(task_id: str, task: TaskUpdate):
-    conn = get_connection()
-    cursor = conn.cursor()
+def update_task(task_id: str, task: TaskUpdate, user: dict = Depends(require_parent)):
     updates = []
     params = []
     if task.name is not None:
@@ -71,17 +67,21 @@ def update_task(task_id: str, task: TaskUpdate):
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
     params.append(task_id)
-    cursor.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE task_id = ?", params)
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE task_id = ?", params)
+        conn.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
     return {"message": "Task updated"}
 
 
 @router.delete("/{task_id}")
-def delete_task(task_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM tasks WHERE task_id = ?", (task_id,))
-    conn.commit()
-    conn.close()
+def delete_task(task_id: str, user: dict = Depends(require_parent)):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM tasks WHERE task_id = ?", (task_id,))
+        conn.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
     return {"message": "Task deleted"}

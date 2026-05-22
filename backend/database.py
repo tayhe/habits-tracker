@@ -1,16 +1,26 @@
 import sqlite3
-import os
-from pathlib import Path
+from contextlib import contextmanager
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "habits.db"
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+import config
+
+DB_PATH = config.DB_PATH
+SUBJECTS = config.SUBJECTS
 
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+@contextmanager
+def get_db():
+    conn = get_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def init_db():
@@ -67,23 +77,26 @@ def init_db():
         )
     """)
 
+    # Indexes for query performance
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_records_date_task ON daily_records(date, task_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
+
     conn.commit()
 
     # Seed users if not exist
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
         import bcrypt
-        # Parent user
-        parent_hash = bcrypt.hashpw("taihe2026".encode(), bcrypt.gensalt()).decode()
+        parent_hash = bcrypt.hashpw("tayhe2026".encode(), bcrypt.gensalt()).decode()
         cursor.execute(
             "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-            ("taihe", parent_hash, "parent")
+            ("tayhe", parent_hash, "parent")
         )
-        # Child user
-        child_hash = bcrypt.hashpw("xiaoyugan2026".encode(), bcrypt.gensalt()).decode()
+        child_hash = bcrypt.hashpw("meow2026".encode(), bcrypt.gensalt()).decode()
         cursor.execute(
             "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-            ("xiaoyugan", child_hash, "child")
+            ("meow", child_hash, "child")
         )
         conn.commit()
 

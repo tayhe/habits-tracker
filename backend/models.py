@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import date, datetime
+from datetime import date
 
 
 # --- User ---
@@ -74,6 +74,25 @@ class DayRecords(BaseModel):
     emoji: str
 
 
+# --- Week Records ---
+class WeekRecords(BaseModel):
+    week_start: date  # Monday of the week
+    week_end: date    # Sunday of the week
+    days: list[DayRecords]  # 7 DayRecords, Monday to Sunday
+    week_total_earn: float
+    week_completed_days: int
+
+
+# --- Week Earn Summary ---
+class WeekEarn(BaseModel):
+    week: str  # e.g. "2026-W21"
+    week_start: date
+    week_end: date
+    total_earn: float
+    completed_days: int
+    total_days: int = 7
+
+
 # --- Auth ---
 class LoginRequest(BaseModel):
     username: str
@@ -83,8 +102,3 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     user: UserOut
     message: str
-
-
-# --- Import ---
-class CSVImportRequest(BaseModel):
-    csv_content: str

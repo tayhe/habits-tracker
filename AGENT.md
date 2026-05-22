@@ -1,4 +1,4 @@
-# Habits_Tracker 项目规范
+# Habits_Tracker 项目规范 v2.1
 
 ## 1. 项目概述
 
@@ -8,7 +8,7 @@
 - 新方案：HTML 单页应用 + Python FastAPI 后端
 
 ### 目标
-- 完美复刻 Notion Habits_Tracker 的产品体验
+- 完美复刻 Notion Habits_Tracker 的产品体验（见 source/notion_screenshot_habits_tracker.png）
 - 支持多浏览器局域网访问
 - 支持家长（管理员）和小朋友（记录）双账号体系
 - 数据存储在服务器 SQLite 数据库
@@ -31,15 +31,17 @@
 
 ### 文件结构
 ```
-projects/Habits_Tracker/
+habits-tracker/
 ├── AGENT.md                 # 本规范文档
 ├── backend/
 │   ├── main.py              # FastAPI 入口、路由定义
+│   ├── config.py            # 集中配置（端口、Cookie、编辑窗口等）
 │   ├── models.py            # Pydantic 数据模型
-│   ├── database.py          # SQLite 连接与初始化
-│   ├── auth.py              # 鉴权逻辑（parent/child）
+│   ├── database.py          # SQLite 连接、初始化、context manager
+│   ├── auth.py              # 鉴权逻辑（parent/child）+ FastAPI 依赖
 │   ├── routers/
-│   │   ├── tasks.py         # 任务定义 CRUD
+│   │   ├── auth_router.py   # 认证路由（login/logout/me）
+│   │   ├── tasks.py         # 任务定义 CRUD（含认证）
 │   │   ├── records.py       # 每日记录 CRUD
 │   │   └── summary.py       # 汇总查询
 │   └── requirements.txt
@@ -136,69 +138,118 @@ projects/Habits_Tracker/
 ### 每日记录
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
+| GET | /records/week?date=YYYY-MM-DD | 获取指定日期所在周的7天数据 | 登录用户 |
 | GET | /records?date=YYYY-MM-DD | 获取指定日期各任务完成情况 | 登录用户 |
-| PUT | /records | 批量更新某日各任务完成状态 | 登录用户（child 仅限最近3天） |
-| GET | /records/range?start=DATE&end=DATE | 获取日期范围内记录 | 登录用户 |
+| GET | /records/range?start=YYYY-MM-DD&end=YYYY-MM-DD | 获取日期范围内各任务完成情况 | 登录用户 |
+| PUT | /records | 单条更新某日某任务完成状态 | 登录用户（child 仅限最近3天） |
+| PUT | /records/batch | 批量更新某日各任务完成状态 | 登录用户（child 仅限最近3天） |
 
 ### 汇总
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
 | GET | /summary/daily?date=YYYY-MM-DD | 每日汇总（含表情符号） | 登录用户 |
 | GET | /summary/weekly?week=YYYY-WXX | 每周汇总（按科目） | 登录用户 |
-
-### 导入
-| 方法 | 路径 | 说明 | 权限 |
-|---|---|---|---|
-| POST | /import/csv | 导入历史 CSV 数据 | parent |
+| GET | /summary/week-earn?date=YYYY-MM-DD | 本周累计收益 | 登录用户 |
 
 ---
 
-## 5. 前端设计
+## 5. 界面设计（复刻 Notion）
 
-### 页面结构
+### 5.1 统一7天网格视图（每日追踪）
+
+**所有用户共享同一视图**：7天横向网格
+
 ```
-┌─────────────────────────────────────────┐
-│ Header: Logo + 用户名 + 登出            │
-├─────────────────────────────────────────┤
-│ 视图切换: [每日追踪] [每周汇总] [任务管理]│  （家长可见任务管理）
-├─────────────────────────────────────────┤
-│                                         │
-│  主内容区（根据视图切换）                │
-│                                         │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  🐟 小鱼干·学习习惯追踪                      [用户名] [角色] [登出]     │
+├─────────────────────────────────────────────────────────────────────────┤
+│  [每日追踪]  [每周汇总]  [任务管理]                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ◀ 上周                                                         下周 ▶  │
+│                                                                         │
+│  ┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐│
+│  │ 05/19   │ 05/20   │ 05/21   │ 05/22   │ 05/23   │ 05/24   │ 05/25   ││
+│  │ 周一    │ 周二    │ 周三    │ 周四    │ 周五    │ 周六    │ 周日    ││
+│  │ (灰色)  │ (灰色)  │ (灰色)  │ (可编辑)│ (可编辑)│ (可编辑)│ (今日)  ││
+│  ├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤│
+│  │ 📖英语  │         │         │         │         │         │         ││
+│  │  ☐ 单词 │    ...  │    ...  │    ...  │    ...  │    ...  │    ...  ││
+│  │  ☐ 绘本 │         │         │         │         │         │         ││
+│  │  ☐ 背诵 │         │         │         │         │         │         ││
+│  │  ...    │         │         │         │         │         │         ││
+│  ├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤│
+│  │ 🔢数学  │         │         │         │         │         │         ││
+│  │  ☐ 计算 │    ...  │    ...  │    ...  │    ...  │    ...  │    ...  ││
+│  │  ☐ 课程 │         │         │         │         │         │         ││
+│  │  ...    │         │         │         │         │         │         ││
+│  ├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤│
+│  │ 📝语文  │         │         │         │         │         │         ││
+│  │  ☐ 晨读 │    ...  │    ...  │    ...  │    ...  │    ...  │    ...  ││
+│  │  ☐ 阅读 │         │         │         │         │         │         ││
+│  │  ...    │         │         │         │         │         │         ││
+│  └─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘│
+│                                                                         │
+│  今日完成: 7/15                            本周已获: 1.2 鱼干          │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 每日追踪视图
-- 顶部：日期选择器（< 今天 >）或**七日视图**（见下方说明）
-- 主体：按科目分组，每科下各任务子项以**彩色标签（Tag）**形式展示
-- 每个子项格子：**未完成**显示为空/灰色；**已完成**显示为彩色圆角标签（参考 Notion 风格）
-- 点击格子弹出**多选下拉菜单**（预设该科所有子项），已选的打勾显示在格子里
-- 底部：本日总收益 + 完成进度表情（🐟🐡/🐟/😭）
+### 5.2 列头样式
 
-**七日视图（小朋友界面专用）：**
-- 水平滚动展示最近7天（今天在右侧）
-- **最近3天**的完成次数格子可编辑（绿色高亮边框）
-- **第4~7天**为只读展示（灰色背景，hover 显示"历史记录不可修改"）
-- 日期列底部显示当日进度表情和总收益
+| 科目 | 背景色 | 文字色 | Emoji |
+|---|---|---|---|
+| 英语 | #DBEAFE | #2563EB | 📖 |
+| 数学 | #FEF3C7 | #D97706 | 🔢 |
+| 语文 | #D1FAE5 | #059669 | 📝 |
 
-### 每周汇总视图
+### 5.3 日期列样式
+
+| 类型 | 样式 |
+|---|---|
+| 历史（4~7天前） | 灰色背景 #F7F6F3，文字灰色，不可编辑 |
+| 最近3天（可编辑） | 绿色边框 #7EBB8A，hover 高亮 |
+| 今日 | 蓝色边框 #2D7ED8，浅蓝背景 #D6E4FF |
+
+### 5.4 单元格交互
+
+- **可编辑单元格**：点击 checkbox 切换完成状态，实时调用 API
+- **只读单元格**：点击无反应，hover 显示"历史记录不可修改"
+- **Checkbox 样式**：16x16px，圆角 3px，未选中为浅灰边框，选中为蓝底白勾
+
+### 5.5 Footer 统计
+
+```
+今日完成: 7/15                            本周已获: 1.2 鱼干
+```
+
+- 格式：`今日完成: {已完成任务数}/{总任务数}`
+- 格式：`本周已获: {累计收益} 鱼干`
+
+### 5.6 周导航
+
+- 左箭头 ◀：切换到上一周
+- 右箭头 ▶：切换到下一周
+- 显示当前周范围（如 "2026-05-19 ~ 2026-05-25"）
+
+---
+
+## 6. 每周汇总视图
+
 - 顶部：周次选择器
-- 主体：按科目分栏，每科显示本周完成率、完成天数、总收益
+- 主体：三栏（英语/数学/语文），每栏显示本周完成天数/总天数 + 进度条 + 总收益
 - 底部：全科总收益
 
-### 任务管理视图（仅家长）
-- 任务列表（可编辑/删除）
-- 新增任务表单
+---
 
-### Notion 风格还原要点
-- emoji 表情作为进度符号（🐟🐡 = 超额完成，🐟 = 完成，😭 = 未达标）
-- 卡片式布局，分组清晰
-- 字体、间距、圆角还原 Notion 质感
-- 响应式：小屏幕设备也能用
+## 7. 任务管理视图（仅 parent）
+
+- 任务列表（可编辑名称/收益/周最低次数/排序权重）
+- 新增任务表单
 
 ---
 
-## 6. 认证与权限矩阵
+## 8. 权限矩阵
 
 | 操作 | parent | child |
 |---|---|---|
@@ -210,49 +261,27 @@ projects/Habits_Tracker/
 
 ---
 
-## 5. 小朋友界面七日视图（补充说明）
-
-**每日追踪标签下显示最近7天，水平排列7列：**
-- 今天在最右侧（第7列）
-- 最近3天（第5~7列）：完成次数格子可编辑，绿色边框
-- 第1~4列（更早的历史）：灰色背景，只读，hover 显示「历史记录不可修改」
-- 每列底部：该日进度表情 + 该日总收益
-
-**家长界面**：维持原有的单日切换模式（◀ 某日 ▶），但也支持切换到七日总览模式
-
----
-
----
-
-## 7. 表情计算规则
+## 9. 表情计算规则
 
 ```python
-def progress_emoji(completed_tasks: int, total_tasks: int, weekly_min: int) -> str:
+def progress_emoji(completed_tasks: int, total_tasks: int) -> str:
     """
     单日完成率 = completed_tasks / total_tasks
-    但实际表情判断需参考本周该科目的完成情况：
-    
-    单科表情（单日）：
-    - 该科今日完成任务数 / 该科总任务数 ≥ 50% → 🐟
-    - 该科今日完成任务数 / 该科总任务数 ≥ 100% → 🐟🐡
-    - 否则 → 😭
-    
-    本日总表情（汇总英语+数学+语文）：
-    - 三科均 ≥ 100% → 🐟🐡
-    - 三科均 ≥ 50% → 🐟
-    - 其他情况 → 😭（参考当日总收益是否达标）
+
+    表情判断：
+    - 完成率 >= 100% → 🐟🐡
+    - 完成率 >= 50% → 🐟
+    - 完成率 < 50% → 😭
     """
 ```
 
-**注意**：由于子项只有完成/未完成两种状态（布尔值），不涉及数字计数。每日进度表情由当日各科完成率决定，而非完成次数。
-
 ---
 
-## 8. 部署方案
+## 10. 部署方案
 
 ### 启动方式（局域网）
 ```bash
-cd projects/Habits_Tracker/backend
+cd habits-tracker/backend
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 18765
 ```
@@ -260,50 +289,201 @@ uvicorn main:app --host 0.0.0.0 --port 18765
 访问地址：`http://<服务器IP>:18765`
 
 ### 数据库初始化
-首次启动时自动建表、插入初始15条任务。
+首次启动时自动建表、插入初始15条任务和2个用户。
 
 ### 端口
 使用 **18765**（与现有服务不冲突）
 
 ---
 
-## 9. 实现阶段
+## 11. 实现状态
 
-### Phase 1：后端骨架 ✅ 规划
-- [ ] 项目目录创建
-- [ ] FastAPI 骨架（含 CORS 配置）
-- [ ] SQLite 数据库初始化
-- [ ] User / Task 模型
-- [ ] 登录认证接口
+### Phase 1：后端骨架 ✅
+- [x] 项目目录创建
+- [x] FastAPI 骨架（含 CORS 配置）
+- [x] SQLite 数据库初始化
+- [x] User / Task 模型
+- [x] 登录认证接口
 
-### Phase 2：核心 API
-- [ ] Tasks CRUD
-- [ ] DailyRecords 读写
-- [ ] DailySummary / WeeklySummary
-- [ ] CSV 导入
+### Phase 2：核心 API ✅
+- [x] Tasks CRUD
+- [x] DailyRecords 读写（含 `/records/week` 7天批量接口）
+- [x] DailySummary / WeeklySummary（含 `/summary/week-earn`）
+- [x] 权限控制（child 用户限制最近3天编辑）
 
-### Phase 3：前端
-- [ ] HTML + CSS 框架（复刻 Notion 风格）
-- [ ] 每日追踪视图
-- [ ] 每周汇总视图
-- [ ] 任务管理视图
-- [ ] 登录页
+### Phase 3：前端 ✅
+- [x] HTML + CSS 框架（复刻 Notion 风格）
+- [x] 统一7天网格视图（所有用户共享）
+- [x] 每周汇总视图
+- [x] 任务管理视图（仅 parent）
+- [x] 登录页
 
 ### Phase 4：测试与数据迁移
-- [ ] 历史数据从 Notion CSV 导入
-- [ ] 功能测试
+- [x] 后端 API 测试（curl 验证通过）
+- [x] 浏览器端到端测试（登录页、认证、日期显示、任务管理）
 - [ ] 局域网访问验证
+- [ ] 历史数据从 Notion CSV 导入（可选）
 
 ---
 
-## 10. 已知约束与注意事项
+## 12. 重构工作记录（2026-05-22）
+
+### 已完成的重构
+
+#### A. 基础设施
+- [x] **新建 `config.py`**：集中管理端口（18765）、Cookie有效期（30天）、编辑窗口（3天）、进度表情阈值等
+- [x] **添加数据库索引**：`idx_records_date_task`、`idx_sessions_token`、`idx_sessions_user`
+- [x] **修复 main.py 重复 root()**：删除第102-104行重复函数，保留正确的文件读取版本
+
+#### B. 认证统一
+- [x] **统一 auth 依赖**：`main.py` 删除重复定义，改用 `from auth import get_current_user, require_parent`
+- [x] **为 tasks 路由添加认证**：GET 使用 `get_current_user`，POST/PUT/DELETE 使用 `require_parent`
+- [x] **修复 require_parent 的 Depends 注入**：原函数缺少 `Depends(get_current_user)`，导致 FastAPI 将 user 参数误判为 request body
+
+#### C. 数据库连接安全
+- [x] **添加 `get_db()` context manager**：替代手动 `conn.close()` 模式，消除连接泄漏风险
+
+#### D. 前端修复
+- [x] **修复 `getWeekStart` 错误**：`-date.getDay()` → `-(date.getDay() || 7)`，修复周日计算错误
+- [x] **统一 `formatDate` 为本地时间**：`toISOString()` (UTC) → 本地年月日拼接，消除跨时区 bug
+- [x] **抽取 `getISOWeekStart()` 和 `getWeekStr()`**：统一 ISO 周计算，消除 weekly view 导航重复代码
+- [x] **修复无限刷新问题**：`api()` 中 401 处理由 `location.reload()` 改为 `showLogin()`
+
+#### E. 代码清理
+- [x] **清理 `records.py` 重复函数**：`get_records_for_date` 和 `get_tasks_for_date` 职责合并
+- [x] **删除未使用模型**：`CSVImportRequest` 在 `models.py` 中定义但路由未实现，已删除
+- [x] **修复 summary.py 的函数引用**：更新为使用重命名后的函数
+
+### 验证结果（已通过）
+| 测试项 | 结果 |
+|--------|------|
+| `GET /api/v1/tasks` (parent) | ✅ |
+| `GET /api/v1/tasks` (child) | ✅ 已登录用户可访问 |
+| `DELETE /tasks/{id}` (child) | ✅ 正确返回 403 "Parent access required" |
+| `DELETE /tasks/{id}` (parent) | ✅ 删除成功 |
+| `POST /tasks` (child) | ✅ 403 拒绝 |
+| `/records/week` API | ✅ 返回7天数据 |
+| `/summary/daily` API | ✅ 正确返回 15 项任务 + emoji |
+| `/summary/weekly` API | ✅ 按科目汇总 |
+| Child 更新今日记录 | ✅ 成功 |
+| Child 更新 12 天前记录 | ✅ 正确拒绝 (403) |
+| 前端登录页 | ✅ 无无限刷新 |
+
+### 待进一步优化（后续）
+- [ ] Service 层抽取（TaskService、RecordService、SummaryService）
+- [ ] Pydantic Enum 验证（subject 字段）
+- [ ] 全局异常处理（统一错误格式）
+- [ ] 配置化演示账号密码（环境变量）
+- [ ] 自动化测试套件
+- [ ] 部署配置（Dockerfile / systemd）
+
+---
+
+## 13. 重构工作记录 v2（2026-05-23）
+
+### A. 安全修复
+- [x] **补全 API 认证**：`GET /records`、`GET /records/range`、`GET /summary/daily`、`GET /summary/weekly` 添加 `Depends(get_current_user)`
+- [x] **启用外键约束**：`get_connection()` 中添加 `PRAGMA foreign_keys = ON`
+- [x] **修复 CORS 配置**：`allow_credentials=False`（前端同源，无需跨域凭证）
+- [x] **Session 过期机制**：`validate_session` 检查 `created_at` 是否超过 `COOKIE_MAX_AGE`
+
+### B. 后端代码质量
+- [x] **全面使用 `get_db()` context manager**：所有 14 处数据库访问改为 `with get_db() as conn:` 模式
+- [x] **清理未使用导入**：`lru_cache`、`Path`、`datetime`、`HTTPException`、`List`、重复 `os`/`date_class`/`timedelta` 导入
+- [x] **统一错误处理**：`summary.py` 无效周格式返回 HTTPException 400；`tasks.py` 仅捕获 `sqlite3.IntegrityError`
+- [x] **抽取 `build_day_records()` 公共函数**：消除 4 处重复的 DayRecords 构建逻辑
+- [x] **删除 `get_tasks_for_date` 别名**：`summary.py` 直接导入 `get_records_for_date`
+- [x] **统一 ISO 周计算**：使用 `date.isocalendar()` 替代手动计算，抽取 `get_iso_week_range()`
+- [x] **修复静默成功**：`update_task`/`delete_task` 检查 `cursor.rowcount`，不存在则返回 404
+- [x] **提取科目常量**：`config.SUBJECTS` 供 `database.py` 和 `summary.py` 共用
+- [x] **认证路由分离**：新建 `routers/auth_router.py`，从 `main.py` 迁移 login/logout/me
+
+### C. 前端修复
+- [x] **修复 Cookie forbidden header**：删除手动 Cookie 设置，改用 `credentials: 'same-origin'`
+- [x] **修复 XSS 风险**：添加 `escapeHtml()` 工具函数，所有动态数据插入前先转义
+- [x] **修复空响应崩溃**：`api()` 中 `r.json()` 改为检查 `resp.text` 后再解析
+- [x] **修复变量遮蔽**：`toggleRecord` 中 `r` 改为 `resp`，`.find(r =>)` 回调改为 `rec`
+- [x] **合并 week-start 函数**：删除 `getISOWeekStart()`，统一使用 `getWeekStart()` + `getWeekStr()`
+- [x] **补充 `#weekNav2` CSS**：weekly view 导航按钮居中样式
+- [x] **抽取 `isSameDay()` 工具函数**：消除重复的日期比较模式
+- [x] **登录改用 `api()` helper**：统一错误处理
+- [x] **使用 `crypto.randomUUID()`**：替代 `Date.now()` 生成 task_id
+
+### D. 项目基础设施
+- [x] **创建 `.gitignore`**：排除 `data/`、`__pycache__/`、`.venv/`、`.env` 等
+- [x] **统一使用 uv**：删除旧 `venv/`，用 `uv venv --python 3.12` 重建
+- [x] **更新 `requirements.txt`**：版本同步，移除未使用的 `httpx`
+- [x] **修复用户名 typo**：`taihe` → `tayhe`（database.py + frontend）
+- [x] **更新 AGENT.md**：移除 CSV 导入、补充 `/records/range`、更新实现状态
+
+---
+
+## 13. 已修复的问题
+
+### Bug 1：Cookie 参数名错误
+- **问题**：`get_current_user(token=Cookie(None))` 中参数名 `token` 导致 FastAPI 查找名为 `token` 的 cookie，实际 cookie 名为 `session_token`
+- **修复**：将参数名改为 `session_token=Cookie(None)`
+- **涉及文件**：`auth.py`、`main.py`
+
+### Bug 2：validate_session 返回值 key 不一致
+- **问题**：返回 `user_id` 但 `main.py` 中 `me()` 函数需要 `id`
+- **修复**：统一返回 `{"id", "username", "role"}`
+- **涉及文件**：`auth.py`
+
+### Bug 3：tasks 路由缺少认证（安全漏洞）
+- **问题**：`tasks.py` 的 POST/PUT/DELETE 端点未添加认证依赖，任何人可创建/修改/删除任务
+- **修复**：添加 `Depends(get_current_user)` 和 `Depends(require_parent)` 依赖
+- **涉及文件**：`routers/tasks.py`
+
+### Bug 4：require_parent 缺少 Depends 注入
+- **问题**：`require_parent(user: dict)` 函数参数未用 `Depends(get_current_user)` 注入，FastAPI 将 `user` 视为 request body，导致 DELETE/PUT/POST 返回 422 "Field required"
+- **修复**：改为 `require_parent(user: dict = Depends(get_current_user))`
+- **涉及文件**：`auth.py`
+
+### Bug 5：前端 getWeekStart 周日计算错误
+- **问题**：`addDays(date, -date.getDay())` 在周日（getDay()===0）时减0天，返回周日而非周一
+- **修复**：改为 `addDays(date, -(date.getDay() || 7))`
+- **涉及文件**：`frontend/index.html`
+
+### Bug 6：formatDate 使用 UTC 导致日期偏差
+- **问题**：`toISOString()` 返回 UTC 日期，与本地时间混用可能导致跨时区错误
+- **修复**：改为本地年月日拼接：`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+- **涉及文件**：`frontend/index.html`
+
+### Bug 7：前端登录后无限刷新
+- **问题**：`api()` 函数在收到 401 时执行 `location.reload()`，未登录用户首次访问时触发 `/auth/me` 返回 401，导致无限刷新
+- **修复**：401 时调用 `showLogin()` 而非 `location.reload()`
+- **涉及文件**：`frontend/index.html`
+
+### Bug 8：main.py 重复 root() 函数
+- **问题**：两个同名 `root()` 函数导致后者覆盖前者
+- **修复**：删除第102-104行的重复定义
+- **涉及文件**：`main.py`
+
+---
+
+## 14. 已知约束与注意事项
 
 - 小朋友（child）账号只能修改最近3天记录，不能修改更早历史
 - 每周汇总按周次（ISO week number）计算
-- 日期使用 YYYY-MM-DD 格式
+- 日期使用 YYYY-MM-DD 格式（API），MM/DD 格式（显示）
 - 所有时间使用 Asia/Shanghai 时区
 - 数据库文件 `data/habits.db` 不加入 Git
 
+### 环境要求
+- Python 3.12+
+- 推荐使用 `uv` 创建虚拟环境：`uv venv --python 3.12 .venv`
+- 依赖安装：`uv pip install fastapi uvicorn pydantic python-multipart bcrypt python-dateutil httpx`
+
 ---
 
-_Last updated: 2026-05-21_
+## 15. 演示账号
+
+| 角色 | 用户名 | 密码 |
+|---|---|---|
+| 家长（parent） | tayhe | tayhe2026 |
+| 小朋友（child） | meow | meow2026 |
+
+---
+
+_Last updated: 2026-05-22 | v2.1 重构版_
