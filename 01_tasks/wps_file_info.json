@@ -1,0 +1,35 @@
+{
+  "file_id": "h76iA5NSyrMXJbuhSc2h1xYtWJwEwHu5o",
+  "file_name": "喵喵学习习惯追踪系统.dbt",
+  "link_url": "https://www.kdocs.cn/l/cgmwxLhnqBKi",
+  "drive_id": "2263326806",
+  "parent_id": "DrLq1AaCurMJMB3unCQqxxFp8kwZ96d25",
+  "tables": {
+    "数据表_id1": {
+      "name": "数据表（默认，可忽略）",
+      "id": 1,
+      "status": "待清理"
+    },
+    "任务定义表_id2": {
+      "name": "任务定义表",
+      "id": 2,
+      "fields": ["任务ID", "科目", "任务名称", "单次收益", "周最低次数", "排序权重"],
+      "records_count": 15,
+      "status": "✅ 已完成"
+    },
+    "每日记录表_id3": {
+      "name": "每日记录表",
+      "id": 3,
+      "fields": ["日期", "周次", "科目", "任务名称", "完成次数", "单次收益", "本日该项收益", "是否达标"],
+      "status": "✅ 结构已建，待填入历史数据"
+    },
+    "每周汇总表_id4": {
+      "name": "每周汇总表",
+      "id": 4,
+      "fields": ["周次", "科目", "本周完成天数", "完成率", "本周收益", "备注"],
+      "status": "✅ 结构已建，待填入汇总数据"
+    }
+  },
+  "created_at": "2026-04-25",
+  "note": "文件已移至「喵喵文档」文件夹"}
+}
