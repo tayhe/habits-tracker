@@ -99,144 +99,114 @@
   #weekNav button:hover { background: #F7F6F3; border-color: #CBCBC8; }
   #weekRange { font-weight: 600; font-size: 14px; color: #37352F; }
 
-  /* 7-Day Grid */
+  /* 7-Day Notion-style Table */
   #weekGrid {
-    display: grid;
-    grid-template-columns: 100px repeat(7, 1fr);
-    gap: 0;
     border: 1px solid #E9E9E7;
     border-radius: 8px;
-    overflow: hidden;
-    background: #FAFAF9;
-  }
-
-  /* Grid header row (days) */
-  .grid-header {
-    display: contents;
-  }
-  .grid-header > div {
-    background: #F7F6F3;
-    padding: 12px 8px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 500;
-    color: #9B9A97;
-    border-bottom: 1px solid #E9E9E7;
-    border-right: 1px solid #E9E9E7;
-  }
-  .grid-header > div:last-child { border-right: none; }
-
-  /* Subject row */
-  .subject-row {
-    display: contents;
-  }
-  .subject-label {
-    background: #FAFAF9;
-    padding: 12px 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    border-right: 1px solid #E9E9E7;
-    border-bottom: 1px solid #E9E9E7;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .subject-label.english { color: #2563EB; background: #DBEAFE; }
-  .subject-label.math { color: #D97706; background: #FEF3C7; }
-  .subject-label.chinese { color: #059669; background: #D1FAE5; }
-  .subject-label .emoji { font-size: 16px; }
-  .subject-label .name { font-size: 12px; }
-
-  /* Day cells */
-  .day-cell {
+    overflow: auto;
     background: #FFFFFF;
+  }
+  .habit-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .habit-table th, .habit-table td {
     border-right: 1px solid #E9E9E7;
     border-bottom: 1px solid #E9E9E7;
-    min-height: 80px;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    transition: background 0.1s;
+    padding: 10px 12px;
+    vertical-align: middle;
+    text-align: left;
   }
-  .day-cell:last-child { border-right: none; }
-  .day-cell.history { background: #F7F6F3; }
-  .day-cell.editable { border-color: #7EBB8A; }
-  .day-cell.editable:hover { background: #F0FFF0; }
-  .day-cell.today { background: #EFF6FF; border-color: #2D7ED8; }
+  .habit-table th:last-child, .habit-table td:last-child { border-right: none; }
+  .habit-table tr:last-child td { border-bottom: none; }
 
-  .day-header {
-    text-align: center;
-    font-size: 11px;
-    color: #9B9A97;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #E9E9E7;
-    margin-bottom: 4px;
-  }
-  .day-cell.today .day-header {
-    color: #2D7ED8;
-    font-weight: 600;
-  }
-
-  /* Task checkbox item */
-  .task-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.1s;
-  }
-  .task-item:hover { background: #F7F6F3; }
-  .task-item.readonly { cursor: not-allowed; opacity: 0.7; }
-  .task-item.readonly:hover { background: transparent; }
-
-  .checkbox {
-    width: 16px;
-    height: 16px;
-    border: 2px solid #D4D4D4;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: all 0.15s;
-    font-size: 10px;
-    color: white;
-  }
-  .checkbox.checked {
-    background: #2D7ED8;
-    border-color: #2D7ED8;
-  }
-  .task-item.readonly .checkbox {
-    border-color: #C8C8C4;
-  }
-  .task-item.readonly .checkbox.checked {
-    background: #9B9A97;
-    border-color: #9B9A97;
-  }
-
-  .task-name {
+  /* Table header */
+  .habit-table thead th {
+    background: #F7F6F3;
     font-size: 12px;
+    font-weight: 600;
+    color: #9B9A97;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .habit-table thead th.col-date { width: 100px; text-align: left; }
+  .habit-table thead th.col-earn, .habit-table thead th.col-progress { width: 90px; }
+  .habit-table thead th.col-subject { }
+
+  /* Date column */
+  .col-date {
+    font-size: 13px;
+    font-weight: 500;
     color: #37352F;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    background: #FFFFFF;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+  }
+  .habit-table thead .col-date { z-index: 15; background: #F7F6F3; }
+  .col-date .date-day { font-size: 11px; color: #9B9A97; display: block; margin-top: 2px; }
+
+  /* Subject column cells */
+  .col-subject {
+    min-height: 48px;
+  }
+  .col-subject .chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 28px;
   }
 
-  /* Subject color indicator */
-  .subject-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
+  /* Task chips */
+  .task-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    user-select: none;
+    font-family: inherit;
   }
-  .subject-dot.english { background: #2563EB; }
-  .subject-dot.math { background: #D97706; }
-  .subject-dot.chinese { background: #059669; }
+  .task-chip:hover { filter: brightness(0.92); }
+  .task-chip.completed { font-weight: 500; }
+  .task-chip.readonly { cursor: default; opacity: 0.75; }
+  .task-chip.readonly:hover { filter: none; }
+
+  .chip-english { background: #DBEAFE; color: #2563EB; border-color: #BFDBFE; }
+  .chip-math { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+  .chip-chinese { background: #D1FAE5; color: #065F46; border-color: #A7F3D0; }
+
+  .task-chip.readonly.chip-english { background: #EFF6FF; color: #93C5FD; border-color: #DBEAFE; }
+  .task-chip.readonly.chip-math { background: #FFFBEB; color: #FCD34D; border-color: #FEF3C7; }
+  .task-chip.readonly.chip-chinese { background: #ECFDF5; color: #6EE7B7; border-color: #D1FAE5; }
+
+  /* Summary columns */
+  .col-earn {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #37352F;
+  }
+  .col-progress {
+    text-align: center;
+    font-size: 18px;
+  }
+
+  /* Today row */
+  .habit-table tr.row-today td { background: #EFF6FF; }
+  .habit-table tr.row-today .col-date { font-weight: 700; color: #2D7ED8; }
+  .habit-table tr.row-today .col-earn, .habit-table tr.row-today .col-progress {
+    background: #EFF6FF;
+  }
 
   /* Footer Stats */
   #footerStats {
@@ -256,7 +226,6 @@
 
   /* Weekly Summary View */
   #weeklyView {
-    display: none;
   }
   #weekNav2 {
     display: flex;
@@ -331,7 +300,7 @@
   .weekly-reward strong { color: #37352F; }
 
   /* Task Management View */
-  #taskMgmtView { display: none; }
+  #taskMgmtView { }
   .task-mgmt-header {
     display: flex;
     justify-content: space-between;
@@ -470,15 +439,18 @@
 
   /* Responsive */
   @media (max-width: 900px) {
-    #weekGrid {
-      grid-template-columns: 60px repeat(7, 1fr);
-      font-size: 11px;
-    }
-    .task-name { font-size: 10px; }
+    .habit-table { table-layout: auto; }
+    .habit-table th, .habit-table td { padding: 8px 8px; font-size: 12px; }
+    .col-date { width: auto; }
+    .col-earn, .col-progress { width: auto; }
+    .task-chip { padding: 2px 6px; font-size: 11px; }
     .weekly-grid { grid-template-columns: 1fr 1fr; }
     .task-mgmt-row { grid-template-columns: 1fr 60px 60px 60px 80px; }
   }
   @media (max-width: 600px) {
+    .habit-table { font-size: 11px; }
+    .task-chip { padding: 2px 5px; font-size: 10px; }
+    .col-earn, .col-progress { width: 60px; }
     .weekly-grid { grid-template-columns: 1fr; }
   }
 </style>
@@ -518,7 +490,7 @@
   <div id="nav">
     <button class="nav-btn active" data-view="daily">每日追踪</button>
     <button class="nav-btn" data-view="weekly">每周汇总</button>
-    <button class="nav-btn" id="taskMgmtBtn" style="display:none">任务管理</button>
+    <button class="nav-btn" id="taskMgmtBtn" data-view="tasks" style="display:none">任务管理</button>
   </div>
 
   <div id="main">
@@ -694,9 +666,9 @@ function switchView(view) {
   currentView = view;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`.nav-btn[data-view="${view}"]`).classList.add('active');
-  document.getElementById('dailyView').style.display = view === 'daily' ? '' : 'none';
-  document.getElementById('weeklyView').style.display = view === 'weekly' ? '' : 'none';
-  document.getElementById('taskMgmtView').style.display = view === 'tasks' ? '' : 'none';
+  document.getElementById('dailyView').style.display = view === 'daily' ? 'block' : 'none';
+  document.getElementById('weeklyView').style.display = view === 'weekly' ? 'block' : 'none';
+  document.getElementById('taskMgmtView').style.display = view === 'tasks' ? 'block' : 'none';
   if (view === 'daily') loadDaily();
   else if (view === 'weekly') loadWeekly();
   else if (view === 'tasks') loadTaskMgmt();
@@ -746,87 +718,78 @@ function renderWeekGrid() {
   today.setHours(0, 0, 0, 0);
   const threeDaysAgo = addDays(today, -2);
 
-  // Group tasks by subject
-  const tasksBySubject = { '英语': [], '数学': [], '语文': [] };
+  // Build task list per subject from first day's records (always has all tasks)
+  const subjectTasks = { '英语': [], '数学': [], '语文': [] };
   if (weekData && weekData.days && weekData.days.length > 0) {
     weekData.days[0].records.forEach(rec => {
-      if (tasksBySubject[rec.subject]) {
-        tasksBySubject[rec.subject].push(rec);
+      if (subjectTasks[rec.subject]) {
+        subjectTasks[rec.subject].push({ task_id: rec.task_id, name: rec.task_name });
       }
     });
   }
 
-  let html = '';
-
-  // Header row with day names
-  html += '<div class="grid-header">';
-  html += '<div></div>';
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(currentWeekStart, i);
-    const isToday = isSameDay(d, today);
-    const dayClass = isToday ? 'style="background:#EFF6FF;color:#2D7ED8;font-weight:600;"' : '';
-    html += `<div ${dayClass}>
-      <div style="font-size:13px;">${formatMD(d)}</div>
-      <div style="font-size:11px;margin-top:2px;">${getDayName(d)}</div>
-    </div>`;
-  }
-  html += '</div>';
-
-  // Subject rows
-  for (const [subject, tasks] of Object.entries(tasksBySubject)) {
+  let html = '<table class="habit-table"><thead><tr>';
+  html += '<th class="col-date">Date</th>';
+  for (const [subject, tasks] of Object.entries(subjectTasks)) {
     if (tasks.length === 0) continue;
     const info = SUBJECT_INFO[subject];
+    html += `<th class="col-subject">${info.emoji} ${escapeHtml(subject)}${tasks.length}项</th>`;
+  }
+  html += '<th class="col-earn">Σ 本日预...</th>';
+  html += '<th class="col-progress">🐟 本日进度</th>';
+  html += '</tr></thead><tbody>';
 
-    html += '<div class="subject-row">';
-    html += `<div class="subject-label ${info.class}">
-      <span class="emoji">${info.emoji}</span>
-      <span class="name">${escapeHtml(subject)}</span>
-    </div>`;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(currentWeekStart, i);
+    const dateStr = formatDate(d);
+    const isToday = isSameDay(d, today);
+    const isEditable = d >= threeDaysAgo && d <= today;
+    const isHistory = d < threeDaysAgo;
+    const rowClass = isToday ? ' class="row-today"' : '';
 
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(currentWeekStart, i);
-      const dateStr = formatDate(d);
-      const isToday = isSameDay(d, today);
-      const isEditable = d >= threeDaysAgo && d <= today;
-      const isHistory = d < threeDaysAgo;
+    html += `<tr${rowClass}>`;
+    html += `<td class="col-date">${formatMD(d)}<span class="date-day">${getDayName(d)}</span></td>`;
 
-      let cellClass = 'day-cell';
-      if (isToday) cellClass += ' today';
-      else if (isEditable) cellClass += ' editable';
-      else if (isHistory) cellClass += ' history';
+    const dayData = weekData.days[i];
 
-      html += `<div class="${cellClass}">`;
-      if (isToday) {
-        html += '<div class="day-header">今日</div>';
-      }
+    for (const [subject, tasks] of Object.entries(subjectTasks)) {
+      if (tasks.length === 0) continue;
+      const info = SUBJECT_INFO[subject];
+      html += '<td class="col-subject"><div class="chips-wrap">';
 
-      const dayData = weekData.days[i];
-      const subjectRecords = dayData ? dayData.records.filter(r => r.subject === subject) : [];
-
-      subjectRecords.forEach(rec => {
-        const checked = rec.completed ? 'checked' : '';
-        const readonly = (isHistory && !isToday) ? 'readonly' : '';
-        const title = (isHistory && !isToday) ? '历史记录不可修改' : '';
-        html += `<div class="task-item ${readonly}" data-task-id="${escapeHtml(rec.task_id)}" data-date="${dateStr}" data-completed="${rec.completed}" title="${title}">
-          <div class="checkbox ${checked}">${rec.completed ? '✓' : ''}</div>
-          <span class="task-name">${escapeHtml(rec.task_name)}</span>
-        </div>`;
+      tasks.forEach(task => {
+        const dayRec = dayData ? dayData.records.find(r => r.task_id === task.task_id) : null;
+        const completed = dayRec ? dayRec.completed : false;
+        const completedClass = completed ? ' completed' : '';
+        const readonlyClass = (!isEditable) ? ' readonly' : '';
+        const title = isHistory ? '历史记录不可修改' : '';
+        html += `<span class="task-chip chip-${info.class}${completedClass}${readonlyClass}" data-task-id="${escapeHtml(task.task_id)}" data-date="${dateStr}" data-completed="${completed}" title="${escapeHtml(task.name)}${title ? ' · ' + title : ''}">${escapeHtml(task.name)}</span>`;
       });
 
-      html += '</div>';
+      html += '</div></td>';
     }
-    html += '</div>';
+
+    // Earnings column
+    const dayEarn = dayData ? dayData.total_reward : 0;
+    html += `<td class="col-earn">${dayEarn}</td>`;
+
+    // Progress emoji column
+    const dayEmoji = dayData ? dayData.emoji : '😭';
+    html += `<td class="col-progress">${dayEmoji}</td>`;
+
+    html += '</tr>';
   }
 
+  html += '</tbody></table>';
   grid.innerHTML = html;
 
-  // Add click handlers
-  grid.querySelectorAll('.task-item:not(.readonly)').forEach(item => {
-    item.addEventListener('click', () => {
-      const taskId = item.dataset.taskId;
-      const date = item.dataset.date;
-      const currentCompleted = item.dataset.completed === 'true';
-      toggleRecord(date, taskId, !currentCompleted, item);
+  // Click handlers for editable chips
+  grid.querySelectorAll('.task-chip:not(.readonly)').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const taskId = chip.dataset.taskId;
+      const date = chip.dataset.date;
+      const currentCompleted = chip.dataset.completed === 'true';
+      toggleRecord(date, taskId, !currentCompleted, chip);
     });
   });
 }
@@ -834,13 +797,11 @@ function renderWeekGrid() {
 async function toggleRecord(date, taskId, completed, elem) {
   const resp = await api('PUT', '/records', { date, task_id: taskId, completed });
   if (resp) {
-    const cb = elem.querySelector('.checkbox');
+    // Update chip visual
     if (completed) {
-      cb.classList.add('checked');
-      cb.textContent = '✓';
+      elem.classList.add('completed');
     } else {
-      cb.classList.remove('checked');
-      cb.textContent = '';
+      elem.classList.remove('completed');
     }
     elem.dataset.completed = completed;
 
@@ -850,6 +811,10 @@ async function toggleRecord(date, taskId, completed, elem) {
         const rec = day.records.find(r => r.task_id === taskId);
         if (rec && rec.date === date) {
           rec.completed = completed;
+          // Recalculate day stats
+          day.completed_count = day.records.filter(r => r.completed).length;
+          day.total_reward = day.records.filter(r => r.completed).reduce((sum, r) => sum + r.reward, 0);
+          day.emoji = progressEmoji(day.completed_count, day.total_count);
           break;
         }
       }
