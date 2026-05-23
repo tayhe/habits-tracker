@@ -2,7 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-PORT = 18765
+PORT = 15000
 DB_PATH = BASE_DIR / "data" / "habits.db"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 

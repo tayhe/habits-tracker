@@ -133,7 +133,7 @@
     z-index: 10;
   }
   .habit-table thead th.col-date { width: 100px; text-align: left; }
-  .habit-table thead th.col-earn, .habit-table thead th.col-progress { width: 90px; }
+  .habit-table thead th.col-earn, .habit-table thead th.col-progress { width: 110px; }
   .habit-table thead th.col-subject { }
 
   /* Date column */
@@ -756,6 +756,8 @@ function renderWeekGrid() {
   const grid = document.getElementById('weekGrid');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  // Normalize currentWeekStart to midnight so computed dates don't carry a time offset
+  currentWeekStart.setHours(0, 0, 0, 0);
   const threeDaysAgo = addDays(today, -2);
 
   // Build task list per subject from first day's records (always has all tasks)
@@ -775,7 +777,7 @@ function renderWeekGrid() {
     const info = SUBJECT_INFO[subject];
     html += `<th class="col-subject">${info.emoji} ${escapeHtml(subject)}${tasks.length}项</th>`;
   }
-  html += '<th class="col-earn">Σ 本日预...</th>';
+  html += '<th class="col-earn">Σ 本日预计收益</th>';
   html += '<th class="col-progress">🐟 本日进度</th>';
   html += '</tr></thead><tbody>';
 
@@ -783,8 +785,8 @@ function renderWeekGrid() {
     const d = addDays(currentWeekStart, i);
     const dateStr = formatDate(d);
     const isToday = isSameDay(d, today);
-    const isEditable = d >= threeDaysAgo && d <= today;
-    const isHistory = d < threeDaysAgo;
+    const isEditable = currentUser.role === 'parent' || (d >= threeDaysAgo && d <= today);
+    const isHistory = currentUser.role !== 'parent' && d < threeDaysAgo;
     const rowClass = isToday ? ' class="row-today"' : '';
 
     html += `<tr${rowClass}>`;
@@ -953,16 +955,24 @@ document.getElementById('nextWeek').addEventListener('click', () => {
   document.getElementById('weekRange').textContent = formatWeekRange(currentWeekStart);
 });
 
+// Parse "YYYY-WXX" back to a Monday Date object
+function parseWeekStr(s) {
+  const [y, w] = s.split('-W').map(Number);
+  const jan4 = new Date(y, 0, 4);
+  const jan4Mon = getWeekStart(jan4);
+  return addDays(jan4Mon, (w - 1) * 7);
+}
+
 // Weekly View
 document.getElementById('prevWeek2').addEventListener('click', () => {
-  const d = new Date(currentWeekStr);
-  currentWeekStr = getWeekStr(addDays(getWeekStart(d), -7));
+  const monday = parseWeekStr(currentWeekStr);
+  currentWeekStr = getWeekStr(addDays(monday, -7));
   loadWeekly();
 });
 
 document.getElementById('nextWeek2').addEventListener('click', () => {
-  const d = new Date(currentWeekStr);
-  currentWeekStr = getWeekStr(addDays(getWeekStart(d), 7));
+  const monday = parseWeekStr(currentWeekStr);
+  currentWeekStr = getWeekStr(addDays(monday, 7));
   loadWeekly();
 });
 
@@ -986,8 +996,8 @@ function renderWeeklyContent(data) {
     html += `<div class="weekly-card">
       <div class="weekly-card-header ${statClass[sub]}">${escapeHtml(sub)}</div>
       <div class="weekly-card-body">
-        <div class="weekly-stat ${statClass[sub]}">${s.completed_days || 0}/${s.total_days || 7}</div>
-        <div class="weekly-label">完成天数</div>
+        <div class="weekly-stat ${statClass[sub]}">${s.tasks_met || 0}/${s.total_tasks || 0}</div>
+        <div class="weekly-label">达标项目</div>
         <div class="weekly-bar"><div class="weekly-bar-fill ${statClass[sub]}" style="width:${rate * 100}%"></div></div>
         <div class="weekly-reward">收益: <strong>${s.total_reward || 0}</strong> 鱼干</div>
       </div>

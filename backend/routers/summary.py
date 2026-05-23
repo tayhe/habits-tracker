@@ -45,59 +45,73 @@ def weekly_summary(week: str = Query(...), user: dict = Depends(get_current_user
 
         result = {}
 
+        week_start = monday.isoformat()
+        week_end = (monday + timedelta(days=7)).isoformat()
+
         for subject in config.SUBJECTS:
             subject_tasks = [t for t in tasks.values() if t["subject"] == subject]
             task_ids = [t["task_id"] for t in subject_tasks]
             if not task_ids:
                 continue
 
+            # Count completions per task this week
             placeholders = ",".join(["?"] * len(task_ids))
             cursor.execute(f"""
-                SELECT date, COUNT(*) as completed_count
+                SELECT task_id, COUNT(*) as cnt
                 FROM daily_records
                 WHERE date >= ? AND date < ? AND task_id IN ({placeholders}) AND completed = 1
-                GROUP BY date
-            """, [monday.isoformat(), (monday + timedelta(days=7)).isoformat()] + task_ids)
-            completed_days = len(cursor.fetchall())
+                GROUP BY task_id
+            """, [week_start, week_end] + task_ids)
+            completion_counts = {row["task_id"]: row["cnt"] for row in cursor.fetchall()}
 
-            total_reward = sum(t["reward"] * min(completed_days, t["weekly_min"])
-                               for t in subject_tasks)
-            rate = completed_days / 7
+            tasks_met = 0
+            total_reward = 0.0
+            for t in subject_tasks:
+                cnt = completion_counts.get(t["task_id"], 0)
+                if cnt >= t["weekly_min"]:
+                    tasks_met += 1
+                    total_reward += t["reward"] * cnt
+
+            total_tasks = len(subject_tasks)
+            rate = tasks_met / total_tasks if total_tasks > 0 else 0
 
             result[subject] = {
                 "week": week,
                 "subject": subject,
-                "completed_days": completed_days,
-                "total_days": 7,
+                "tasks_met": tasks_met,
+                "total_tasks": total_tasks,
                 "rate": round(rate, 2),
                 "total_reward": round(total_reward, 2),
-                "emoji": progress_emoji(completed_days, 7),
-                "task_count": len(subject_tasks)
+                "emoji": progress_emoji(tasks_met, total_tasks),
             }
 
         # Overall
         all_task_ids = list(tasks.keys())
+        all_tasks_met = 0
+        all_total_tasks = len(all_task_ids)
         if all_task_ids:
             placeholders = ",".join(["?"] * len(all_task_ids))
             cursor.execute(f"""
-                SELECT date, COUNT(*) as completed_count
+                SELECT task_id, COUNT(*) as cnt
                 FROM daily_records
                 WHERE date >= ? AND date < ? AND task_id IN ({placeholders}) AND completed = 1
-                GROUP BY date
-            """, [monday.isoformat(), (monday + timedelta(days=7)).isoformat()] + all_task_ids)
-            completed_days = len(cursor.fetchall())
-        else:
-            completed_days = 0
+                GROUP BY task_id
+            """, [week_start, week_end] + all_task_ids)
+            all_completion_counts = {row["task_id"]: row["cnt"] for row in cursor.fetchall()}
+
+            for t in tasks.values():
+                cnt = all_completion_counts.get(t["task_id"], 0)
+                if cnt >= t["weekly_min"]:
+                    all_tasks_met += 1
 
     result["总计"] = {
         "week": week,
         "subject": "总计",
-        "completed_days": completed_days,
-        "total_days": 7,
-        "rate": round(completed_days / 7, 2),
+        "tasks_met": all_tasks_met,
+        "total_tasks": all_total_tasks,
+        "rate": round(all_tasks_met / all_total_tasks, 2) if all_total_tasks > 0 else 0,
         "total_reward": round(sum(v["total_reward"] for v in result.values()), 2),
-        "emoji": progress_emoji(completed_days, 7),
-        "task_count": len(all_task_ids)
+        "emoji": progress_emoji(all_tasks_met, all_total_tasks),
     }
 
     return result

@@ -1,0 +1,12 @@
+[project]
+name = "habits-tracker"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.136.1",
+    "uvicorn==0.47.0",
+    "pydantic==2.13.4",
+    "python-multipart==0.0.29",
+    "bcrypt==5.0.0",
+    "python-dateutil==2.9.0.post0",
+]
