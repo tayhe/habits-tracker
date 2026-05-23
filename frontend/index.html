@@ -624,6 +624,7 @@
     <!-- Daily View -->
     <div id="dailyView">
       <div id="weekNav">
+        <button id="homeWeek" title="回到本周">🏠</button>
         <button id="prevWeek" title="上一周">◀</button>
         <span id="weekRange"></span>
         <button id="nextWeek" title="下一周">▶</button>
@@ -639,6 +640,7 @@
     <!-- Weekly View -->
     <div id="weeklyView">
       <div id="weekNav2">
+        <button id="homeWeek2" title="回到本周">🏠</button>
         <button id="prevWeek2" title="上一周">◀</button>
         <span id="weekRange2"></span>
         <button id="nextWeek2" title="下一周">▶</button>
@@ -1062,6 +1064,12 @@ function updateFooterStats() {
 }
 
 // Week navigation
+document.getElementById('homeWeek').addEventListener('click', () => {
+  currentWeekStart = getWeekStart(new Date());
+  loadWeekData();
+  document.getElementById('weekRange').textContent = formatWeekDisplay(getWeekStr(currentWeekStart), currentWeekStart);
+});
+
 document.getElementById('prevWeek').addEventListener('click', () => {
   currentWeekStart = addDays(currentWeekStart, -7);
   loadWeekData();
@@ -1083,6 +1091,11 @@ function parseWeekStr(s) {
 }
 
 // Weekly View
+document.getElementById('homeWeek2').addEventListener('click', () => {
+  currentWeekStr = getWeekStr(new Date());
+  loadWeekly();
+});
+
 document.getElementById('prevWeek2').addEventListener('click', () => {
   const monday = parseWeekStr(currentWeekStr);
   currentWeekStr = getWeekStr(addDays(monday, -7));
