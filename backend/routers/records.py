@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
 from datetime import date, datetime, timedelta
-from models import RecordUpdate, RecordOut, DayRecords, WeekRecords
+from models import RecordUpdate, RecordOut, DayRecords, WeekRecords, TaskProgress
 from database import get_db
 from auth import get_current_user
 
@@ -85,6 +85,8 @@ def get_week_records(
     """Get all 7 days records for the week containing the given date."""
     monday = date - timedelta(days=date.weekday())
     sunday = monday + timedelta(days=6)
+    week_start_str = monday.isoformat()
+    week_end_str = (monday + timedelta(days=7)).isoformat()
 
     days = []
     week_total_earn = 0.0
@@ -99,12 +101,45 @@ def get_week_records(
             week_completed_days += 1
         days.append(day_records)
 
+    # Per-task weekly progress
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT task_id, name, subject, reward, weekly_min FROM tasks ORDER BY sort_weight DESC")
+        all_tasks = cursor.fetchall()
+        task_ids = [t["task_id"] for t in all_tasks]
+        if task_ids:
+            placeholders = ",".join("?" * len(task_ids))
+            cursor.execute(f"""
+                SELECT task_id, COUNT(*) as cnt
+                FROM daily_records
+                WHERE completed = 1 AND date >= ? AND date < ?
+                AND task_id IN ({placeholders})
+                GROUP BY task_id
+            """, [week_start_str, week_end_str] + task_ids)
+            counts = {row["task_id"]: row["cnt"] for row in cursor.fetchall()}
+        else:
+            counts = {}
+
+    task_progress = []
+    for t in all_tasks:
+        cnt = counts.get(t["task_id"], 0)
+        task_progress.append(TaskProgress(
+            task_id=t["task_id"],
+            name=t["name"],
+            subject=t["subject"],
+            reward=t["reward"],
+            weekly_min=t["weekly_min"],
+            completed_count=cnt,
+            qualified=cnt >= t["weekly_min"]
+        ))
+
     return WeekRecords(
         week_start=monday,
         week_end=sunday,
         days=days,
         week_total_earn=round(week_total_earn, 2),
-        week_completed_days=week_completed_days
+        week_completed_days=week_completed_days,
+        task_progress=task_progress
     )
 
 

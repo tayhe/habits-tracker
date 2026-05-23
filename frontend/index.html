@@ -247,6 +247,75 @@
     background: #EFF6FF;
   }
 
+  /* Summary row */
+  .habit-table tr.row-summary {
+    background: #F7F6F3;
+  }
+  .habit-table tr.row-summary td {
+    border-top: 2px solid #E0DED8;
+    padding: 10px 12px;
+    vertical-align: top;
+  }
+  .habit-table tr.row-summary .col-date {
+    font-size: 12px;
+    font-weight: 600;
+    color: #787774;
+    padding-top: 14px;
+  }
+  .habit-table tr.row-summary .col-earn,
+  .habit-table tr.row-summary .col-progress {
+    background: #F7F6F3;
+  }
+  .task-mini-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    line-height: 1;
+  }
+  .task-mini-row:last-child { margin-bottom: 0; }
+  .task-mini-name {
+    flex-shrink: 0;
+    width: 52px;
+    font-size: 11px;
+    color: #37352F;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .task-mini-bar {
+    flex: 1;
+    height: 5px;
+    background: #E9E9E7;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 30px;
+  }
+  .task-mini-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .task-mini-bar-fill.english { background: #2563EB; }
+  .task-mini-bar-fill.math { background: #D97706; }
+  .task-mini-bar-fill.chinese { background: #059669; }
+  .task-mini-bar-fill.qualified { background: #16A34A; }
+  .task-mini-count {
+    flex-shrink: 0;
+    width: 30px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #9B9A97;
+    text-align: right;
+  }
+  .task-mini-row.qualified .task-mini-count {
+    color: #16A34A;
+  }
+  .task-mini-check {
+    flex-shrink: 0;
+    font-size: 10px;
+  }
+
   /* Footer Stats */
   #footerStats {
     display: flex;
@@ -337,6 +406,41 @@
   .weekly-bar-fill.total { background: #37352F; }
   .weekly-reward { font-size: 13px; color: #9B9A97; }
   .weekly-reward strong { color: #37352F; }
+  .weekly-rules {
+    margin-top: 24px;
+    padding: 20px 24px;
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #92400E;
+  }
+  .weekly-rules h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #B45309;
+  }
+  .weekly-rules .rule-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .weekly-rules .rule-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+  .weekly-rules .rule-example {
+    margin: 8px 0 0 24px;
+    padding: 8px 12px;
+    background: #FFFFFF;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #78350F;
+  }
+  .weekly-rules .rule-example span.pass { color: #16A34A; font-weight: 600; }
+  .weekly-rules .rule-example span.fail { color: #DC2626; font-weight: 600; }
 
   /* Task Management View */
   #taskMgmtView { }
@@ -440,17 +544,6 @@
     margin-top: 8px;
   }
   .login-form button:hover { background: #1A6BC4; }
-  .login-hint {
-    margin-top: 24px;
-    font-size: 12px;
-    color: #9B9A97;
-    text-align: left;
-    background: #F7F6F3;
-    padding: 14px;
-    border-radius: 6px;
-    line-height: 1.8;
-  }
-  .login-hint code { background: #E9E9E7; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
 
   /* Toast */
   #toast {
@@ -507,10 +600,6 @@
       <input type="password" id="password" placeholder="密码" autocomplete="current-password" required>
       <button type="submit">登 录</button>
     </form>
-    <div class="login-hint">
-      <strong>小朋友账号：</strong><br>
-      👧 <code>meow</code> / <code>meow2026</code>
-    </div>
   </div>
 </div>
 
@@ -642,10 +731,11 @@ function getWeekStr(d) {
   return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
-function formatWeekRange(start) {
+function formatWeekDisplay(weekStr, start) {
+  const [year, w] = weekStr.split('-W');
   const end = addDays(start, 6);
-  const fmt = d => `${d.getMonth() + 1}/${d.getDate()}`;
-  return `${fmt(start)} ~ ${fmt(end)}`;
+  const fmt = d => `${d.getMonth() + 1}月${d.getDate()}日`;
+  return `${year}年第${parseInt(w)}周（${fmt(start)}-${fmt(end)}）`;
 }
 
 function getDayName(d) {
@@ -738,7 +828,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 // Load Daily View
 async function loadDaily() {
   currentWeekStart = currentWeekStart || getWeekStart(new Date());
-  document.getElementById('weekRange').textContent = formatWeekRange(currentWeekStart);
+  document.getElementById('weekRange').textContent = formatWeekDisplay(getWeekStr(currentWeekStart), currentWeekStart);
   await loadWeekData();
 }
 
@@ -824,6 +914,36 @@ function renderWeekGrid() {
     const dayEmoji = dayData ? dayData.emoji : '😭';
     html += `<td class="col-progress">${dayEmoji}</td>`;
 
+    html += '</tr>';
+  }
+
+  // Summary row: per-task weekly progress
+  if (weekData && weekData.task_progress && weekData.task_progress.length > 0) {
+    const subjectClass = { '英语': 'english', '数学': 'math', '语文': 'chinese' };
+    const grouped = { '英语': [], '数学': [], '语文': [] };
+    weekData.task_progress.forEach(tp => {
+      if (grouped[tp.subject]) grouped[tp.subject].push(tp);
+    });
+
+    html += '<tr class="row-summary">';
+    html += '<td class="col-date">达标进度</td>';
+    for (const [subject, tasks] of Object.entries(subjectTasks)) {
+      if (tasks.length === 0) continue;
+      html += '<td class="col-subject">';
+      grouped[subject].forEach(tp => {
+        const pct = tp.weekly_min > 0 ? Math.min(tp.completed_count / tp.weekly_min, 1) : 0;
+        const cls = tp.qualified ? ' qualified' : '';
+        html += `<div class="task-mini-row${cls}">`;
+        html += `<span class="task-mini-name" title="${escapeHtml(tp.name)}">${escapeHtml(tp.name)}</span>`;
+        html += `<div class="task-mini-bar"><div class="task-mini-bar-fill ${subjectClass[subject]}${tp.qualified ? ' qualified' : ''}" style="width:${pct * 100}%"></div></div>`;
+        html += `<span class="task-mini-count">${tp.completed_count}/${tp.weekly_min}</span>`;
+        html += `<span class="task-mini-check">${tp.qualified ? '✅' : ''}</span>`;
+        html += '</div>';
+      });
+      html += '</td>';
+    }
+    html += '<td class="col-earn"></td>';
+    html += '<td class="col-progress"></td>';
     html += '</tr>';
   }
 
@@ -945,13 +1065,13 @@ function updateFooterStats() {
 document.getElementById('prevWeek').addEventListener('click', () => {
   currentWeekStart = addDays(currentWeekStart, -7);
   loadWeekData();
-  document.getElementById('weekRange').textContent = formatWeekRange(currentWeekStart);
+  document.getElementById('weekRange').textContent = formatWeekDisplay(getWeekStr(currentWeekStart), currentWeekStart);
 });
 
 document.getElementById('nextWeek').addEventListener('click', () => {
   currentWeekStart = addDays(currentWeekStart, 7);
   loadWeekData();
-  document.getElementById('weekRange').textContent = formatWeekRange(currentWeekStart);
+  document.getElementById('weekRange').textContent = formatWeekDisplay(getWeekStr(currentWeekStart), currentWeekStart);
 });
 
 // Parse "YYYY-WXX" back to a Monday Date object
@@ -977,7 +1097,8 @@ document.getElementById('nextWeek2').addEventListener('click', () => {
 
 async function loadWeekly() {
   currentWeekStr = currentWeekStr || getWeekStr(new Date());
-  document.getElementById('weekRange2').textContent = currentWeekStr;
+  const monday = parseWeekStr(currentWeekStr);
+  document.getElementById('weekRange2').textContent = formatWeekDisplay(currentWeekStr, monday);
   const data = await api('GET', `/summary/weekly?week=${currentWeekStr}`);
   if (!data) return;
   renderWeeklyContent(data);
@@ -1003,6 +1124,40 @@ function renderWeeklyContent(data) {
     </div>`;
   }
   html += '</div>';
+
+  // Rules explanation
+  html += `
+  <div class="weekly-rules">
+    <h4>🐟 收益怎么算？</h4>
+    <div class="rule-item">
+      <span class="rule-icon">1️⃣</span>
+      <span>每个任务都有一个「每周最低次数」，叫做<strong>达标门槛</strong></span>
+    </div>
+    <div class="rule-item">
+      <span class="rule-icon">2️⃣</span>
+      <span>一周内完成次数 <strong>≥ 达标门槛</strong> = <span class="pass">达标</span>，收益 = 单次收益 × 实际完成次数</span>
+    </div>
+    <div class="rule-item">
+      <span class="rule-icon">3️⃣</span>
+      <span>一周内完成次数 <strong>&lt; 达标门槛</strong> = <span class="fail">未达标</span>，收益 = 0</span>
+    </div>
+    <div class="rule-example">
+      例：「英语背诵」单次收益 1.0，达标门槛 1次/周<br>
+      ✅ 本周完成 2 次 → 达标 → 收益 = 1.0 × 2 = <span class="pass">2.0 鱼干</span><br>
+      ❌ 本周完成 0 次 → 未达标 → 收益 = <span class="fail">0</span>
+    </div>
+    <div class="rule-example">
+      例：「英语单词」单次收益 0.1，达标门槛 5次/周<br>
+      ❌ 本周完成 3 次 → 未达标 → 收益 = <span class="fail">0</span><br>
+      ✅ 本周完成 5 次 → 达标 → 收益 = 0.1 × 5 = <span class="pass">0.5 鱼干</span><br>
+      🌟 本周完成 7 次 → 达标 → 收益 = 0.1 × 7 = <span class="pass">0.7 鱼干</span>（多做多得！）
+    </div>
+    <div class="rule-item" style="margin-top:12px;">
+      <span class="rule-icon">💡</span>
+      <span><strong>小技巧：</strong>达标之后每多做一次都能多赚鱼干哦！</span>
+    </div>
+  </div>`;
+
   cont.innerHTML = html;
 }
 

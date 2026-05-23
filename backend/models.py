@@ -75,12 +75,23 @@ class DayRecords(BaseModel):
 
 
 # --- Week Records ---
+class TaskProgress(BaseModel):
+    task_id: str
+    name: str
+    subject: str
+    reward: float
+    weekly_min: int
+    completed_count: int
+    qualified: bool
+
+
 class WeekRecords(BaseModel):
     week_start: date  # Monday of the week
     week_end: date    # Sunday of the week
     days: list[DayRecords]  # 7 DayRecords, Monday to Sunday
     week_total_earn: float
     week_completed_days: int
+    task_progress: list[TaskProgress]
 
 
 # --- Week Earn Summary ---
