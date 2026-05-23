@@ -1,0 +1,8 @@
+services:
+  habits-tracker:
+    build: .
+    ports:
+      - "15000:15000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
