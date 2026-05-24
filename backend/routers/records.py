@@ -96,14 +96,14 @@ def get_week_records(
     week_end_str = (monday + timedelta(days=7)).isoformat()
 
     days = []
-    week_total_earn = 0.0
+    expected_earn = 0.0
     week_completed_days = 0
 
     for i in range(7):
         d = monday + timedelta(days=i)
         records = get_records_for_date(d)
         day_records = build_day_records(d, records)
-        week_total_earn += day_records.total_reward
+        expected_earn += day_records.total_reward
         if day_records.completed_count >= day_records.total_count / 2:
             week_completed_days += 1
         days.append(day_records)
@@ -144,7 +144,7 @@ def get_week_records(
         week_start=monday,
         week_end=sunday,
         days=days,
-        week_total_earn=round(week_total_earn, 2),
+        expected_earn=round(expected_earn, 2),
         week_completed_days=week_completed_days,
         task_progress=task_progress
     )

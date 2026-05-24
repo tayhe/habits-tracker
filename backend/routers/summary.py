@@ -67,11 +67,20 @@ def weekly_summary(week: str = Query(...), user: dict = Depends(get_current_user
 
             tasks_met = 0
             total_reward = 0.0
+            task_details = []
             for t in subject_tasks:
                 cnt = completion_counts.get(t["task_id"], 0)
-                if cnt >= t["weekly_min"]:
+                qualified = cnt >= t["weekly_min"]
+                if qualified:
                     tasks_met += 1
                     total_reward += t["reward"] * cnt
+                task_details.append({
+                    "task_id": t["task_id"],
+                    "name": t["name"],
+                    "weekly_min": t["weekly_min"],
+                    "completed_count": cnt,
+                    "qualified": qualified,
+                })
 
             total_tasks = len(subject_tasks)
             rate = tasks_met / total_tasks if total_tasks > 0 else 0
@@ -84,6 +93,7 @@ def weekly_summary(week: str = Query(...), user: dict = Depends(get_current_user
                 "rate": round(rate, 2),
                 "total_reward": round(total_reward, 2),
                 "emoji": progress_emoji(tasks_met, total_tasks),
+                "tasks": task_details,
             }
 
         # Overall

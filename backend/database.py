@@ -4,7 +4,6 @@ from contextlib import contextmanager
 import config
 
 DB_PATH = config.DB_PATH
-SUBJECTS = config.SUBJECTS
 
 
 def get_connection():

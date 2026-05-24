@@ -89,7 +89,7 @@ class WeekRecords(BaseModel):
     week_start: date  # Monday of the week
     week_end: date    # Sunday of the week
     days: list[DayRecords]  # 7 DayRecords, Monday to Sunday
-    week_total_earn: float
+    expected_earn: float
     week_completed_days: int
     task_progress: list[TaskProgress]
 

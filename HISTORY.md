@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-05-24 — 一周战果数据统一 + 收益术语澄清
+
+### 一周战果页面数据源统一
+- `/summary/weekly` 响应新增 `tasks` 字段，包含每个子任务的进度（`completed_count`、`qualified`）
+- 前端一周战果页不再调用 `/records/week`，改为单一数据源 `/summary/weekly`
+- 修复卡片头部（达标项目数/收益）与子项进度条不一致的问题
+
+### 收益术语澄清
+- 每日捕猎页底部 "本周已获" → "本周预期收益"（无条件累计所有已完成任务）
+- `WeekRecords.week_total_earn` → `WeekRecords.expected_earn`（后端模型字段重命名）
+- 明确区分：预期收益（每日捕猎）vs 实际达标收益（一周战果）
+
+### 清理冗余代码
+- 删除 `config.py` 中未使用的 `SESSION_TOKEN_BYTES` 和 `PROGRESS_EMOJI_THRESHOLDS`
+- 删除 `database.py` 中未使用的 `SUBJECTS` 别名
+- 删除 `source/` 目录（Notion 导出素材）
+- 删除 `frontend/index.html` 中无目标的 `a` 标签 CSS 规则
+- 更新 `AGENT.md` 目录树和 API 文档
+
+---
+
 ## 2026-05-23 v3.0 — 收益逻辑修正 + uv 迁移 + Bug 修复
 
 ### 收益计算逻辑重写

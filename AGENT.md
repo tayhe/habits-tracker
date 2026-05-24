@@ -53,8 +53,6 @@ habits-tracker/
 │   └── dedenne.png          # 咚咚鼠图片（喵的雄心页首）
 ├── data/
 │   └── habits.db            # SQLite 数据库文件（Git 忽略）
-└── source/
-    └── notion_export/       # 原始 Notion 导出数据（只读）
 ```
 
 ---
@@ -195,7 +193,7 @@ habits-tracker/
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
 | GET | /summary/daily?date=YYYY-MM-DD | 每日汇总 | 登录用户 |
-| GET | /summary/weekly?week=YYYY-WXX | 每周汇总（按科目） | 登录用户 |
+| GET | /summary/weekly?week=YYYY-WXX | 每周汇总（按科目，含子任务进度） | 登录用户 |
 | GET | /summary/week-earn?date=YYYY-MM-DD | 本周累计收益 | 登录用户 |
 | GET | /summary/multi-week?weeks=N | 多周趋势对比（含分科目数据） | 登录用户 |
 | GET | /summary/fulfillment?weeks=X&weeks=Y | 查询多周兑现状态 | 登录用户 |
@@ -218,7 +216,7 @@ habits-tracker/
 │ 05/23 周六│ 绘本 +           │ +               │ 课外阅读 +       │ 0.4        │ 😿 ░░░░░░░░░░░░░░ 0/15│
 └──────────┴──────────────────┴──────────────────┴──────────────────┴────────────┴──────────────────────┘
 
-今日完成: 2/15                                      本周已获: 4.5 鱼干
+今日完成: 2/15                                      本周预期收益: 4.5 鱼干
 ```
 
 ### 6.2 日期行样式
