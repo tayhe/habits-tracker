@@ -49,8 +49,8 @@ docker compose up -d
 
 | 角色 | 用户名 | 密码 |
 |------|--------|------|
-| 家长 | tayhe | tayhe2026 |
-| 小朋友 | meow | meow2026 |
+| 家长 | tayhe | parents |
+| 小朋友 | meow | child |
 
 ## 技术栈
 

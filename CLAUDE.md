@@ -45,8 +45,8 @@ FastAPI + SQLite backend serving a single-file HTML frontend (no JS framework). 
 
 | Role | Username | Password |
 |------|----------|----------|
-| Parent (admin) | tayhe | tayhe2026 |
-| Child | meow | meow2026 |
+| Parent (admin) | tayhe | parents |
+| Child | meow | child |
 
 ## Key Files
 

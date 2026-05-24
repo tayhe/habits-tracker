@@ -301,8 +301,8 @@ PYTHONPATH=backend uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 
 | 角色 | 用户名 | 导码 |
 |---|---|---|
-| 家长 | tayhe | tayhe2026 |
-| 小朋友 | meow | meow2026 |
+| 家长 | tayhe | parents |
+| 小朋友 | meow | child |
 
 ---
 

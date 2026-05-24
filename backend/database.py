@@ -99,12 +99,12 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
         import bcrypt
-        parent_hash = bcrypt.hashpw("tayhe2026".encode(), bcrypt.gensalt()).decode()
+        parent_hash = bcrypt.hashpw("parents".encode(), bcrypt.gensalt()).decode()
         cursor.execute(
             "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
             ("tayhe", parent_hash, "parent")
         )
-        child_hash = bcrypt.hashpw("meow2026".encode(), bcrypt.gensalt()).decode()
+        child_hash = bcrypt.hashpw("child".encode(), bcrypt.gensalt()).decode()
         cursor.execute(
             "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
             ("meow", child_hash, "child")

@@ -113,3 +113,8 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     user: UserOut
     message: str
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str

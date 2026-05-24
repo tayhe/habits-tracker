@@ -49,6 +49,68 @@
     font-size: 13px;
   }
   #logoutBtn:hover { background: #EBEBEA; }
+  #changePwdBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    border-radius: 6px;
+    line-height: 1;
+  }
+  #changePwdBtn:hover { background: #EBEBEA; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px;
+    width: 340px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+  .modal-card h3 { margin: 0 0 20px; font-size: 18px; text-align: center; }
+  .modal-card input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #E9E9E7;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+  }
+  .modal-card input:focus { outline: none; border: 2px solid #2D7ED8; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+  .modal-cancel {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #E9E9E7;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .modal-cancel:hover { background: #F7F6F3; }
+  .modal-submit {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: #2D7ED8;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .modal-submit:hover { background: #1a5db0; }
 
   /* Nav */
   #nav {
@@ -793,6 +855,7 @@
     <div class="user-info">
       <span id="displayName"></span>
       <span class="role-tag" id="roleTag"></span>
+      <button id="changePwdBtn" title="修改密码">🔑</button>
       <button id="logoutBtn">登出</button>
     </div>
   </div>
@@ -876,6 +939,20 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- Change Password Modal -->
+<div id="pwdModal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <h3>🔑 修改密码</h3>
+    <input type="password" id="pwdOld" placeholder="当前密码">
+    <input type="password" id="pwdNew" placeholder="新密码（至少6位）">
+    <input type="password" id="pwdConfirm" placeholder="确认新密码">
+    <div class="modal-actions">
+      <button class="modal-cancel" id="pwdCancel">取消</button>
+      <button class="modal-submit" id="pwdSubmit">确认修改</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const API = '/api/v1';
@@ -1176,6 +1253,36 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await api('POST', '/auth/logout');
   location.reload();
+});
+
+// Change password modal
+document.getElementById('changePwdBtn').addEventListener('click', () => {
+  document.getElementById('pwdModal').style.display = 'flex';
+  document.getElementById('pwdOld').value = '';
+  document.getElementById('pwdNew').value = '';
+  document.getElementById('pwdConfirm').value = '';
+  document.getElementById('pwdOld').focus();
+});
+document.getElementById('pwdCancel').addEventListener('click', () => {
+  document.getElementById('pwdModal').style.display = 'none';
+});
+document.getElementById('pwdModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('pwdModal')) {
+    document.getElementById('pwdModal').style.display = 'none';
+  }
+});
+document.getElementById('pwdSubmit').addEventListener('click', async () => {
+  const oldPwd = document.getElementById('pwdOld').value;
+  const newPwd = document.getElementById('pwdNew').value;
+  const confirmPwd = document.getElementById('pwdConfirm').value;
+  if (!oldPwd || !newPwd || !confirmPwd) { showToast('请填写所有字段'); return; }
+  if (newPwd.length < 6) { showToast('新密码至少需要6个字符'); return; }
+  if (newPwd !== confirmPwd) { showToast('两次输入的新密码不一致'); return; }
+  const resp = await api('PUT', '/auth/password', { old_password: oldPwd, new_password: newPwd });
+  if (resp) {
+    showToast('密码修改成功');
+    document.getElementById('pwdModal').style.display = 'none';
+  }
 });
 
 // Load Daily View
