@@ -21,7 +21,7 @@ FastAPI + SQLite backend serving a single-file HTML frontend (no JS framework). 
 
 **Backend** (`backend/`):
 - `main.py` — FastAPI app, registers routers, mounts frontend as static files
-- `config.py` — Port (15000), DB path, cookie TTL, editable day window (3 days for child)
+- `config.py` — Port (15000), DB path, cookie TTL, editable day window (7 days for child)
 - `database.py` — SQLite connection via context manager; auto-creates tables and seeds 15 tasks + 2 users on first run
 - `auth.py` — Session-based auth (cookie), role checking (`require_parent`, `require_child`, `require_any`)
 - `routers/` — `auth_router.py`, `tasks.py`, `records.py`, `summary.py`
@@ -35,7 +35,7 @@ FastAPI + SQLite backend serving a single-file HTML frontend (no JS framework). 
 - **`PYTHONPATH=backend` is mandatory** — code uses bare imports (`import database`, `import config`), not relative/package imports
 - All API routes under `/api/v1`
 - Auth uses session cookies, not JWT
-- Child role: can only edit records for the last 3 days; parent: no restriction
+- Child role: can only edit records for the last 7 days; parent: no restriction
 - Weekly summary uses ISO week numbers
 - Dates: API uses `YYYY-MM-DD`, display uses `MM/DD`
 - Timezone: `Asia/Shanghai`

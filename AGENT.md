@@ -14,7 +14,7 @@
 
 ### 使用场景
 - 太和（家长）：管理任务、记录任意日期的完成情况
-- 小鱼干（小朋友）：查看进度、填写最近3天的完成情况
+- 小鱼干（小朋友）：查看进度、填写最近7天的完成情况
 
 ---
 
@@ -43,12 +43,14 @@ habits-tracker/
 │   ├── database.py          # SQLite 连接、初始化、context manager
 │   ├── auth.py              # 鉴权逻辑（parent/child）+ FastAPI 依赖
 │   └── routers/
-│       ├── auth_router.py   # 认证路由（login/logout/me）
+│       ├── auth_router.py   # 认证路由（login/logout/me/change password）
 │       ├── tasks.py         # 任务定义 CRUD（含认证）
 │       ├── records.py       # 每日记录 CRUD
 │       └── summary.py       # 汇总查询（每日/每周）
 ├── frontend/
-│   └── index.html           # 单页应用（内联 CSS/JS）
+│   ├── index.html           # 单页应用（内联 CSS/JS）
+│   ├── favicon.svg          # 网站图标（黑猫）
+│   └── dedenne.png          # 咚咚鼠图片（喵的雄心页首）
 ├── data/
 │   └── habits.db            # SQLite 数据库文件（Git 忽略）
 └── source/
@@ -116,6 +118,15 @@ habits-tracker/
 | user_id | INTEGER FK | 关联用户 |
 | created_at | DATETIME | 创建时间 |
 
+### 表：weekly_fulfillment（爸爸兑现）
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | INTEGER PRIMARY KEY | 记录ID |
+| week | TEXT UNIQUE | 周标识（YYYY-WXX） |
+| fulfilled | BOOLEAN | 是否已兑现 |
+| fulfilled_at | DATETIME | 兑现时间 |
+| created_at | DATETIME | 创建时间 |
+
 ---
 
 ## 4. 收益计算逻辑（核心）
@@ -161,6 +172,7 @@ habits-tracker/
 | POST | /auth/login | 登录，返回 session | 公开 |
 | POST | /auth/logout | 登出 | 登录用户 |
 | GET | /auth/me | 获取当前用户信息 | 登录用户 |
+| PUT | /auth/password | 修改密码 | 登录用户 |
 
 ### 任务管理
 | 方法 | 路径 | 说明 | 权限 |
@@ -176,8 +188,8 @@ habits-tracker/
 | GET | /records/week?date=YYYY-MM-DD | 获取指定日期所在周的7天数据 | 登录用户 |
 | GET | /records?date=YYYY-MM-DD | 获取指定日期各任务完成情况 | 登录用户 |
 | GET | /records/range?start=&end= | 获取日期范围内的记录 | 登录用户 |
-| PUT | /records | 更新单条记录 | 登录用户（child 仅限最近3天） |
-| PUT | /records/batch | 批量更新记录 | 登录用户（child 仅限最近3天） |
+| PUT | /records | 更新单条记录 | 登录用户（child 仅限最近7天） |
+| PUT | /records/batch | 批量更新记录 | 登录用户（child 仅限最近7天） |
 
 ### 汇总
 | 方法 | 路径 | 说明 | 权限 |
@@ -185,6 +197,9 @@ habits-tracker/
 | GET | /summary/daily?date=YYYY-MM-DD | 每日汇总 | 登录用户 |
 | GET | /summary/weekly?week=YYYY-WXX | 每周汇总（按科目） | 登录用户 |
 | GET | /summary/week-earn?date=YYYY-MM-DD | 本周累计收益 | 登录用户 |
+| GET | /summary/multi-week?weeks=N | 多周趋势对比（含分科目数据） | 登录用户 |
+| GET | /summary/fulfillment?weeks=X&weeks=Y | 查询多周兑现状态 | 登录用户 |
+| PUT | /summary/fulfillment?week=X&fulfilled=true | 更新兑现状态 | parent |
 
 ---
 
@@ -195,13 +210,13 @@ habits-tracker/
 日期为行、科目为列的表格。每个科目列显示已完成的任务芯片和 "+" 添加按钮。
 
 ```
-┌──────────┬──────────────────┬──────────────────┬──────────────────┬────────────┬────────┐
-│ Date     │ 📖 英语7项        │ 🔢 数学4项        │ 📝 语文4项        │ Σ 本日预计收益│ 🐟 进度 │
-├──────────┼──────────────────┼──────────────────┼──────────────────┼────────────┼────────┤
-│ 05/21 周四│ 单词 背诵 课 听力  │ +               │ +               │ 1.5        │ 😭     │
-│ 05/22 周五│ 绘本 背诵 课 听力  │ 思维课程 预习练习  │ 晨读 课外阅读     │ 2.6        │ 🐟     │
-│ 05/23 周六│ 绘本 +           │ +               │ 课外阅读 +       │ 0.4        │ 😭     │
-└──────────┴──────────────────┴──────────────────┴──────────────────┴────────────┴────────┘
+┌──────────┬──────────────────┬──────────────────┬──────────────────┬────────────┬──────────────────────┐
+│ Date     │ 🔤 英语7项        │ 🧮 数学4项        │ 📝 语文4项        │ Σ 本日预计收益│ 本日进度              │
+├──────────┼──────────────────┼──────────────────┼──────────────────┼────────────┼──────────────────────┤
+│ 05/21 周四│ 单词 背诵 课 听力  │ +               │ +               │ 1.5        │ 😿 ░░░░░░░░░░░░░░ 0/15│
+│ 05/22 周五│ 绘本 背诵 课 听力  │ 思维课程 预习练习  │ 晨读 课外阅读     │ 2.6        │ 😼 ▓▓▓░░░░░░░░░░░ 3/15│
+│ 05/23 周六│ 绘本 +           │ +               │ 课外阅读 +       │ 0.4        │ 😿 ░░░░░░░░░░░░░░ 0/15│
+└──────────┴──────────────────┴──────────────────┴──────────────────┴────────────┴──────────────────────┘
 
 今日完成: 2/15                                      本周已获: 4.5 鱼干
 ```
@@ -209,11 +224,11 @@ habits-tracker/
 ### 6.2 日期行样式
 | 类型 | 样式 | 可编辑 |
 |---|---|---|
-| 历史（child: >3天前） | 淡化芯片，不可点击 | ❌ |
+| 历史（child: >7天前） | 淡化芯片，不可点击 | ❌ |
 | 可编辑范围 | 正常芯片，可点击切换 | ✅ |
 | 今日 | 蓝色背景 #EFF6FF，日期加粗蓝色 | ✅ |
 
-**注意**：家长账号可编辑所有日期，不受3天限制。
+**注意**：家长账号可编辑所有日期，不受7天限制。
 
 ### 6.3 任务芯片交互
 - **已完成**：彩色药丸（英语蓝/数学黄/语文绿），点击取消
@@ -221,10 +236,12 @@ habits-tracker/
 - **"+" 按钮**：虚线框，点击弹出未完成任务下拉列表
 
 ### 6.4 每周汇总视图
-四个卡片（英语/数学/语文/总计），每个显示：
+四个卡片（🔤英语/🧮数学/📝语文/总计），每个显示：
 - 达标项目数/总任务数
 - 进度条（达标比例）
 - 收益（鱼干）
+- 各任务的周进度条（仅科目卡片）
+- 总计卡片下方显示大号进度猫猫表情
 
 ### 6.5 任务管理视图（仅 parent）
 任务列表，可编辑名称/收益/周最低次数/排序权重，支持新增和删除。
@@ -237,28 +254,30 @@ habits-tracker/
 |---|---|---|
 | 登录 | ✅ | ✅ |
 | 查看所有视图 | ✅ | ✅（无任务管理） |
-| 填写完成情况 | ✅（任意日期） | ✅（仅最近3天） |
+| 填写完成情况 | ✅（任意日期） | ✅（仅最近7天） |
 | 管理任务定义 | ✅ | ❌ |
 
 ---
 
 ## 8. 表情计算规则
 
-### 每日进度表情
+### 进度表情（6档猫猫心情 + 进度条）
 ```python
-def progress_emoji(completed_tasks, total_tasks):
-    rate = completed_tasks / total_tasks
-    if rate >= 1.0: return "🐟🐡"  # 全部完成
-    if rate >= 0.5: return "🐟"    # 过半
-    return "😭"                     # 不足一半
+def progress_emoji(completed, total):
+    rate = completed / total
+    if rate >= 1.0: return "😺🎉"  # 大满贯
+    if rate >= 0.75: return "😺"   # 得意猫
+    if rate >= 0.5: return "😸"    # 开心猫
+    if rate >= 0.25: return "😼"   # 坚强猫
+    if rate > 0: return "😾"       # 生气猫
+    return "😿"                     # 小哭猫
 ```
+进度条：`▓` 表示已完成，`░` 表示未完成，长度与任务数一致（最多15格）。
 
-### 每周汇总表情
-```python
-# 使用相同的 progress_emoji 函数
-# completed_tasks = 本周达标任务数
-# total_tasks = 该科目总任务数
-```
+### 使用场景
+- 每日追踪页：emoji + 进度条 + 完成数/总数
+- 每周汇总页：总计卡片下方显示大号进度猫猫
+- 征途趋势表：emoji + 进度条（最多10格）
 
 ---
 
@@ -287,7 +306,7 @@ PYTHONPATH=backend uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 
 ## 10. 已知约束
 
-- 小朋友（child）账号只能修改最近3天记录
+- 小朋友（child）账号只能修改最近7天记录
 - 家长（parent）账号可修改任意日期
 - 每周汇总按 ISO week number 计算
 - 日期格式：API 用 YYYY-MM-DD，显示用 MM/DD
@@ -306,4 +325,4 @@ PYTHONPATH=backend uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 
 ---
 
-_Last updated: 2026-05-23 | v3.0_
+_Last updated: 2026-05-24 | v3.0_
