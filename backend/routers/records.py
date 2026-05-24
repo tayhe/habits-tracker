@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 from models import RecordUpdate, RecordOut, DayRecords, WeekRecords, TaskProgress
 from database import get_db
 from auth import get_current_user
+import config
 
 router = APIRouter(prefix="/records", tags=["records"])
 
@@ -148,7 +149,7 @@ def upsert_record(update: RecordUpdate, user: dict = Depends(get_current_user)):
     """Update a single record. Child users can only update records within the last 3 days."""
     if user["role"] == "child":
         today = date.today()
-        three_days_ago = today - timedelta(days=2)
+        three_days_ago = today - timedelta(days=config.EDITABLE_DAY_WINDOW - 1)
         if update.date < three_days_ago or update.date > today:
             raise HTTPException(
                 status_code=403,
@@ -176,7 +177,7 @@ def upsert_records_batch(
     """Batch update records. Child users can only update records within the last 3 days."""
     if user["role"] == "child":
         today = date.today()
-        three_days_ago = today - timedelta(days=2)
+        three_days_ago = today - timedelta(days=config.EDITABLE_DAY_WINDOW - 1)
         for update in updates:
             if update.date < three_days_ago or update.date > today:
                 raise HTTPException(

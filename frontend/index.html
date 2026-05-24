@@ -34,7 +34,7 @@
   .role-tag {
     font-size: 11px;
     padding: 2px 8px;
-    border-radius: 4px;
+    border-radius: 6px;
     background: #E9E9E7;
     color: #9B9A97;
   }
@@ -44,7 +44,7 @@
     background: none;
     border: 1px solid #E9E9E7;
     padding: 4px 12px;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
   }
@@ -64,7 +64,7 @@
     background: none;
     border: none;
     padding: 6px 14px;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
     color: #9B9A97;
@@ -89,7 +89,7 @@
     border: 1px solid #E9E9E7;
     width: 36px;
     height: 36px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
     display: flex;
@@ -103,7 +103,7 @@
   /* 7-Day Notion-style Table */
   #weekGrid {
     border: 1px solid #E9E9E7;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: auto;
     background: #FFFFFF;
   }
@@ -168,7 +168,7 @@
     align-items: center;
     gap: 4px;
     padding: 3px 10px;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
     transition: all 0.15s;
@@ -196,7 +196,7 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    border-radius: 4px;
+    border-radius: 6px;
     border: 1px dashed #D4D4D4;
     color: #D4D4D4;
     font-size: 14px;
@@ -212,8 +212,8 @@
     z-index: 200;
     background: #FFFFFF;
     border: 1px solid #E9E9E7;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    border-radius: 12px;
+    box-shadow: rgba(15, 15, 15, 0.16) 0px 16px 48px -8px;
     min-width: 160px;
     max-height: 200px;
     overflow-y: auto;
@@ -223,7 +223,7 @@
     padding: 6px 12px;
     font-size: 12px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 6px;
     transition: background 0.1s;
     white-space: nowrap;
   }
@@ -248,75 +248,6 @@
     background: #EFF6FF;
   }
 
-  /* Summary row */
-  .habit-table tr.row-summary {
-    background: #F7F6F3;
-  }
-  .habit-table tr.row-summary td {
-    border-top: 2px solid #E0DED8;
-    padding: 10px 12px;
-    vertical-align: top;
-  }
-  .habit-table tr.row-summary .col-date {
-    font-size: 12px;
-    font-weight: 600;
-    color: #787774;
-    padding-top: 14px;
-  }
-  .habit-table tr.row-summary .col-earn,
-  .habit-table tr.row-summary .col-progress {
-    background: #F7F6F3;
-  }
-  .task-mini-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
-    line-height: 1;
-  }
-  .task-mini-row:last-child { margin-bottom: 0; }
-  .task-mini-name {
-    flex-shrink: 0;
-    width: 52px;
-    font-size: 11px;
-    color: #37352F;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .task-mini-bar {
-    flex: 1;
-    height: 5px;
-    background: #E9E9E7;
-    border-radius: 3px;
-    overflow: hidden;
-    min-width: 30px;
-  }
-  .task-mini-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s ease;
-  }
-  .task-mini-bar-fill.english { background: #2563EB; }
-  .task-mini-bar-fill.math { background: #D97706; }
-  .task-mini-bar-fill.chinese { background: #059669; }
-  .task-mini-bar-fill.qualified { background: #16A34A; }
-  .task-mini-count {
-    flex-shrink: 0;
-    width: 30px;
-    font-size: 10px;
-    font-weight: 600;
-    color: #9B9A97;
-    text-align: right;
-  }
-  .task-mini-row.qualified .task-mini-count {
-    color: #16A34A;
-  }
-  .task-mini-check {
-    flex-shrink: 0;
-    font-size: 10px;
-  }
-
   /* Footer Stats */
   #footerStats {
     display: flex;
@@ -325,7 +256,7 @@
     padding: 16px 20px;
     background: #FAFAF9;
     border: 1px solid #E9E9E7;
-    border-radius: 8px;
+    border-radius: 12px;
     margin-top: 16px;
     font-size: 14px;
   }
@@ -348,7 +279,7 @@
     border: 1px solid #E9E9E7;
     width: 36px;
     height: 36px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
     display: flex;
@@ -365,7 +296,7 @@
   }
   .weekly-card {
     border: 1px solid #E9E9E7;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
   }
   .weekly-card-header {
@@ -392,13 +323,13 @@
   .weekly-bar {
     height: 8px;
     background: #E9E9E7;
-    border-radius: 4px;
+    border-radius: 8px;
     margin-bottom: 12px;
     overflow: hidden;
   }
   .weekly-bar-fill {
     height: 100%;
-    border-radius: 4px;
+    border-radius: 8px;
     transition: width 0.3s;
   }
   .weekly-bar-fill.english { background: #2563EB; }
@@ -407,42 +338,58 @@
   .weekly-bar-fill.total { background: #37352F; }
   .weekly-reward { font-size: 13px; color: #9B9A97; }
   .weekly-reward strong { color: #37352F; }
-  .weekly-rules {
-    margin-top: 24px;
-    padding: 20px 24px;
-    background: #FFFBEB;
-    border: 1px solid #FDE68A;
-    border-radius: 8px;
-    font-size: 13px;
-    line-height: 1.8;
-    color: #92400E;
+  .weekly-task-progress {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #E9E9E7;
   }
-  .weekly-rules h4 {
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    color: #B45309;
-  }
-  .weekly-rules .rule-item {
+  .weekly-task-row {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 8px;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    line-height: 1;
   }
-  .weekly-rules .rule-icon {
+  .weekly-task-row:last-child { margin-bottom: 0; }
+  .weekly-task-name {
     flex-shrink: 0;
-    font-size: 16px;
+    width: 56px;
+    font-size: 11px;
+    color: #37352F;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .weekly-rules .rule-example {
-    margin: 8px 0 0 24px;
-    padding: 8px 12px;
-    background: #FFFFFF;
-    border-radius: 4px;
-    font-size: 12px;
-    color: #78350F;
+  .weekly-task-bar {
+    flex: 1;
+    height: 5px;
+    background: #E9E9E7;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 30px;
   }
-  .weekly-rules .rule-example span.pass { color: #16A34A; font-weight: 600; }
-  .weekly-rules .rule-example span.fail { color: #DC2626; font-weight: 600; }
-
+  .weekly-task-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .weekly-task-bar-fill.english { background: #2563EB; }
+  .weekly-task-bar-fill.math { background: #D97706; }
+  .weekly-task-bar-fill.chinese { background: #059669; }
+  .weekly-task-bar-fill.qualified { background: #1aae39; }
+  .weekly-task-count {
+    flex-shrink: 0;
+    width: 28px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #9B9A97;
+    text-align: right;
+  }
+  .weekly-task-row.qualified .weekly-task-count { color: #1aae39; }
+  .weekly-task-check {
+    flex-shrink: 0;
+    font-size: 10px;
+  }
   /* Task Management View */
   #taskMgmtView { }
   .task-mgmt-header {
@@ -456,13 +403,13 @@
     color: white;
     border: none;
     padding: 8px 16px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
   }
   .add-task-btn:hover { background: #1A6BC4; }
-  .task-mgmt-list { border: 1px solid #E9E9E7; border-radius: 8px; overflow: hidden; }
+  .task-mgmt-list { border: 1px solid #E9E9E7; border-radius: 12px; overflow: hidden; }
   .task-mgmt-row {
     display: grid;
     grid-template-columns: 1fr 80px 80px 80px 100px;
@@ -474,20 +421,20 @@
   .task-mgmt-row:last-child { border-bottom: none; }
   .task-mgmt-row.header { background: #F7F6F3; font-weight: 600; font-size: 12px; color: #9B9A97; }
   .task-mgmt-row input, .task-mgmt-row select {
-    border: 1px solid #E9E9E7;
-    border-radius: 4px;
+    border: 1px solid #c8c4be;
+    border-radius: 8px;
     padding: 6px 8px;
     font-size: 13px;
     width: 100%;
     font-family: inherit;
   }
-  .task-mgmt-row input:focus, .task-mgmt-row select:focus { outline: none; border-color: #2D7ED8; }
+  .task-mgmt-row input:focus, .task-mgmt-row select:focus { outline: none; border: 2px solid #2D7ED8; }
   .save-btn {
     background: #2D7ED8;
     color: white;
     border: none;
     padding: 6px 14px;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 12px;
   }
@@ -497,11 +444,11 @@
     border: 1px solid #E9E9E7;
     color: #9B9A97;
     padding: 6px 12px;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 12px;
   }
-  .del-btn:hover { background: #FEE; border-color: #E99; color: #D44; }
+  .del-btn:hover { background: #FEE; border-color: #E99; color: #e03131; }
 
   /* Login Page */
   #loginPage {
@@ -517,7 +464,7 @@
     border-radius: 12px;
     padding: 40px;
     width: 380px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    box-shadow: rgba(15, 15, 15, 0.08) 0px 4px 12px 0px;
     text-align: center;
   }
   .login-logo { font-size: 48px; margin-bottom: 16px; }
@@ -525,20 +472,20 @@
   .login-subtitle { font-size: 13px; color: #9B9A97; margin-bottom: 28px; }
   .login-form { display: flex; flex-direction: column; gap: 12px; }
   .login-form input {
-    border: 1px solid #E9E9E7;
-    border-radius: 6px;
+    border: 1px solid #c8c4be;
+    border-radius: 8px;
     padding: 12px 14px;
     font-size: 14px;
     width: 100%;
     font-family: inherit;
   }
-  .login-form input:focus { outline: none; border-color: #2D7ED8; }
+  .login-form input:focus { outline: none; border: 2px solid #2D7ED8; }
   .login-form button {
     background: #2D7ED8;
     color: white;
     border: none;
     padding: 12px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
@@ -555,10 +502,11 @@
     background: #37352F;
     color: white;
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 13px;
     transition: transform 0.25s;
     z-index: 999;
+    box-shadow: rgba(15, 15, 15, 0.16) 0px 16px 48px -8px;
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
 
@@ -569,6 +517,236 @@
     color: #9B9A97;
     font-size: 14px;
   }
+
+  /* Trend View */
+  #trendView { }
+  .trend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .trend-header h3 { font-size: 16px; font-weight: 600; }
+  .trend-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #787671;
+  }
+  .trend-controls select {
+    border: 1px solid #c8c4be;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .trend-table {
+    width: 100%;
+    border: 1px solid #E9E9E7;
+    border-radius: 12px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .trend-table th {
+    background: #F7F6F3;
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    color: #787671;
+    text-align: center;
+    border-bottom: 1px solid #E9E9E7;
+  }
+  .trend-table th:first-child { text-align: left; }
+  .trend-table td {
+    padding: 10px 12px;
+    text-align: center;
+    border-bottom: 1px solid #E9E9E7;
+  }
+  .trend-table td:first-child {
+    text-align: left;
+    font-weight: 500;
+    color: #37352F;
+    white-space: nowrap;
+  }
+  .trend-table tr:last-child td { border-bottom: none; }
+  .trend-table tr:hover td { background: #FAFAF9; }
+  .trend-bar {
+    display: inline-block;
+    height: 6px;
+    border-radius: 3px;
+    min-width: 4px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .trend-reward { font-weight: 600; color: #37352F; }
+  .trend-best { background: #D9F3E1; }
+  .trend-worst { background: #FDE0EC; }
+  .fulfill-check {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #1aae39;
+  }
+  .fulfill-check:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  /* Ambition View */
+  #ambitionView { }
+  .ambition-hero {
+    text-align: center;
+    padding: 40px 20px 32px;
+    background: linear-gradient(135deg, #DBEAFE 0%, #D1FAE5 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .ambition-hero-emoji { font-size: 56px; margin-bottom: 12px; }
+  .ambition-hero h1 { font-size: 28px; font-weight: 700; color: #37352F; margin-bottom: 8px; }
+  .ambition-subtitle { font-size: 15px; color: #787671; }
+  .ambition-summary {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .ambition-stat-card {
+    flex: 1;
+    min-width: 140px;
+    background: #FFFFFF;
+    border: 1px solid #E9E9E7;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .ambition-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .ambition-stat-label {
+    font-size: 12px;
+    color: #787671;
+  }
+  .ambition-subject {
+    margin-bottom: 24px;
+  }
+  .ambition-subject-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #E9E9E7;
+  }
+  .ambition-subject-emoji { font-size: 24px; }
+  .ambition-subject-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #37352F;
+  }
+  .ambition-subject-count {
+    font-size: 12px;
+    color: #787671;
+    margin-left: auto;
+  }
+  .ambition-tasks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .ambition-task-card {
+    background: #FFFFFF;
+    border: 1px solid #E9E9E7;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: box-shadow 0.15s;
+  }
+  .ambition-task-card:hover {
+    box-shadow: rgba(15, 15, 15, 0.08) 0px 4px 12px 0px;
+  }
+  .ambition-task-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #37352F;
+  }
+  .ambition-task-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+  .ambition-task-reward {
+    color: #2D7ED8;
+    font-weight: 600;
+  }
+  .ambition-task-min {
+    color: #787671;
+  }
+  .ambition-task-bar {
+    height: 4px;
+    background: #E9E9E7;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .ambition-task-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+  .ambition-task-bar-fill.english { background: #2563EB; }
+  .ambition-task-bar-fill.math { background: #D97706; }
+  .ambition-task-bar-fill.chinese { background: #059669; }
+  .ambition-task-note {
+    font-size: 11px;
+    color: #A4A097;
+    line-height: 1.4;
+  }
+  .ambition-rules {
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-top: 8px;
+  }
+  .ambition-rules h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #92400E;
+    margin-bottom: 12px;
+  }
+  .ambition-rules p {
+    font-size: 13px;
+    color: #92400E;
+    line-height: 1.8;
+    margin-bottom: 8px;
+  }
+  .ambition-rules strong { color: #B45309; }
+  .ambition-rules .rule-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #92400E;
+  }
+  .ambition-rules .rule-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+  .ambition-rules .rule-example {
+    margin: 8px 0 0 24px;
+    padding: 8px 12px;
+    background: #FFFFFF;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #78350F;
+  }
+  .ambition-rules .rule-example span.pass { color: #1aae39; font-weight: 600; }
+  .ambition-rules .rule-example span.fail { color: #e03131; font-weight: 600; }
 
   /* Responsive */
   @media (max-width: 900px) {
@@ -616,12 +794,28 @@
   </div>
 
   <div id="nav">
-    <button class="nav-btn active" data-view="daily">每日追踪</button>
-    <button class="nav-btn" data-view="weekly">每周汇总</button>
-    <button class="nav-btn" id="taskMgmtBtn" data-view="tasks" style="display:none">任务管理</button>
+    <button class="nav-btn" data-view="ambition">喵喵的雄心</button>
+    <!-- 每日追踪 (daily tracking) -->
+    <button class="nav-btn active" data-view="daily">每日捕猎</button>
+    <!-- 本周汇总 (weekly summary) -->
+    <button class="nav-btn" data-view="weekly">一周战果</button>
+    <!-- 每周汇总 (multi-week trend) -->
+    <button class="nav-btn" data-view="trend">征途</button>
+    <!-- 任务管理 (task management) -->
+    <button class="nav-btn" id="taskMgmtBtn" data-view="tasks" style="display:none">军令状</button>
   </div>
 
   <div id="main">
+    <!-- Ambition View -->
+    <div id="ambitionView">
+      <div class="ambition-hero">
+        <div class="ambition-hero-emoji">🐟</div>
+        <h1>喵喵的雄心</h1>
+        <p class="ambition-subtitle">我的学习任务奖励计划</p>
+      </div>
+      <div id="ambitionContent"></div>
+    </div>
+
     <!-- Daily View -->
     <div id="dailyView">
       <div id="weekNav">
@@ -649,6 +843,23 @@
       <div id="weeklyContent"></div>
     </div>
 
+    <!-- Trend View -->
+    <div id="trendView">
+      <div class="trend-header">
+        <h3>多周趋势对比</h3>
+        <div class="trend-controls">
+          <label>显示周数：</label>
+          <select id="trendWeeks">
+            <option value="4">4 周</option>
+            <option value="8" selected>8 周</option>
+            <option value="12">12 周</option>
+            <option value="26">26 周</option>
+          </select>
+        </div>
+      </div>
+      <div id="trendContent"></div>
+    </div>
+
     <!-- Task Management -->
     <div id="taskMgmtView">
       <div class="task-mgmt-header">
@@ -671,6 +882,7 @@ let currentView = 'daily';
 let currentWeekStart = null;  // Monday of current week
 let weekData = null;         // Cached week records
 let currentWeekStr = null;   // Weekly view week string
+let CONFIG = {};
 
 // Helpers
 function showToast(msg) {
@@ -766,6 +978,8 @@ const SUBJECT_INFO = {
 
 // Init
 async function init() {
+  const cfg = await api('GET', '/config');
+  if (cfg) CONFIG = cfg;
   const me = await api('GET', '/auth/me');
   if (me) {
     currentUser = me;
@@ -793,16 +1007,130 @@ function showApp() {
   switchView('daily');
 }
 
+// Ambition View
+async function loadAmbition() {
+  const tasks = await api('GET', '/tasks');
+  if (!tasks) return;
+  renderAmbitionContent(tasks);
+}
+
+function renderAmbitionContent(tasks) {
+  const cont = document.getElementById('ambitionContent');
+  const subjects = ['英语', '数学', '语文'];
+  const subjectInfo = {
+    '英语': { emoji: '📖', class: 'english', color: '#2563EB' },
+    '数学': { emoji: '🔢', class: 'math', color: '#D97706' },
+    '语文': { emoji: '📝', class: 'chinese', color: '#059669' }
+  };
+
+  // Calculate totals
+  let totalTasks = tasks.length;
+  let totalMinPerWeek = 0;
+  let totalMaxReward = 0;
+  tasks.forEach(t => {
+    totalMinPerWeek += t.weekly_min;
+    totalMaxReward += t.reward * t.weekly_min;
+  });
+
+  // Summary cards
+  let html = `<div class="ambition-summary">
+    <div class="ambition-stat-card">
+      <div class="ambition-stat-value" style="color:#2D7ED8">${totalTasks}</div>
+      <div class="ambition-stat-label">个学习任务</div>
+    </div>
+    <div class="ambition-stat-card">
+      <div class="ambition-stat-value" style="color:#059669">${totalMinPerWeek}</div>
+      <div class="ambition-stat-label">次/周 最低目标</div>
+    </div>
+    <div class="ambition-stat-card">
+      <div class="ambition-stat-value" style="color:#D97706">${totalMaxReward.toFixed(1)}</div>
+      <div class="ambition-stat-label">鱼干/周 潜在收益</div>
+    </div>
+  </div>`;
+
+  // Tasks by subject
+  for (const subject of subjects) {
+    const info = subjectInfo[subject];
+    const subjectTasks = tasks.filter(t => t.subject === subject);
+    if (subjectTasks.length === 0) continue;
+
+    let subjectMaxReward = 0;
+    subjectTasks.forEach(t => { subjectMaxReward += t.reward * t.weekly_min; });
+
+    html += `<div class="ambition-subject">
+      <div class="ambition-subject-header">
+        <span class="ambition-subject-emoji">${info.emoji}</span>
+        <span class="ambition-subject-name">${subject}</span>
+        <span class="ambition-subject-count">${subjectTasks.length} 项 · 潜在 ${subjectMaxReward.toFixed(1)} 鱼干/周</span>
+      </div>
+      <div class="ambition-tasks">`;
+
+    subjectTasks.forEach(t => {
+      const maxEarn = t.reward * t.weekly_min;
+      html += `<div class="ambition-task-card">
+        <div class="ambition-task-name">${escapeHtml(t.name)}</div>
+        <div class="ambition-task-meta">
+          <span class="ambition-task-reward">🐟 ${t.reward} / 次</span>
+          <span class="ambition-task-min">≥ ${t.weekly_min} 次/周</span>
+        </div>
+        <div class="ambition-task-bar"><div class="ambition-task-bar-fill ${info.class}" style="width:100%"></div></div>
+        <div class="ambition-task-note">达标后最高可得 <strong>${maxEarn.toFixed(1)}</strong> 鱼干</div>
+      </div>`;
+    });
+
+    html += '</div></div>';
+  }
+
+  // Rules (moved from weekly summary "收益怎么算")
+  html += `
+  <div class="ambition-rules">
+    <h3>🐟 收益怎么算？</h3>
+    <div class="rule-item">
+      <span class="rule-icon">1️⃣</span>
+      <span>每个任务都有一个「每周最低次数」，叫做<strong>达标门槛</strong></span>
+    </div>
+    <div class="rule-item">
+      <span class="rule-icon">2️⃣</span>
+      <span>一周内完成次数 <strong>≥ 达标门槛</strong> = <span class="pass">达标</span>，收益 = 单次收益 × 实际完成次数</span>
+    </div>
+    <div class="rule-item">
+      <span class="rule-icon">3️⃣</span>
+      <span>一周内完成次数 <strong>&lt; 达标门槛</strong> = <span class="fail">未达标</strong>，收益 = 0</span>
+    </div>
+    <div class="rule-example">
+      例：「英语背诵」单次收益 1.0，达标门槛 1次/周<br>
+      ✅ 本周完成 2 次 → 达标 → 收益 = 1.0 × 2 = <span class="pass">2.0 鱼干</span><br>
+      ❌ 本周完成 0 次 → 未达标 → 收益 = <span class="fail">0</span>
+    </div>
+    <div class="rule-example">
+      例：「英语单词」单次收益 0.1，达标门槛 5次/周<br>
+      ❌ 本周完成 3 次 → 未达标 → 收益 = <span class="fail">0</span><br>
+      ✅ 本周完成 5 次 → 达标 → 收益 = 0.1 × 5 = <span class="pass">0.5 鱼干</span><br>
+      🌟 本周完成 7 次 → 达标 → 收益 = 0.1 × 7 = <span class="pass">0.7 鱼干</span>（多做多得！）
+    </div>
+    <div class="rule-item" style="margin-top:12px;">
+      <span class="rule-icon">💡</span>
+      <span><strong>小技巧：</strong>达标之后每多做一次都能多赚鱼干哦！</span>
+    </div>
+  </div>`;
+
+  cont.innerHTML = html;
+}
+
 // Navigation
 function switchView(view) {
   currentView = view;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`.nav-btn[data-view="${view}"]`).classList.add('active');
+  document.getElementById('ambitionView').style.display = view === 'ambition' ? 'block' : 'none';
   document.getElementById('dailyView').style.display = view === 'daily' ? 'block' : 'none';
   document.getElementById('weeklyView').style.display = view === 'weekly' ? 'block' : 'none';
+  document.getElementById('trendView').style.display = view === 'trend' ? 'block' : 'none';
   document.getElementById('taskMgmtView').style.display = view === 'tasks' ? 'block' : 'none';
-  if (view === 'daily') loadDaily();
+  if (view === 'ambition') loadAmbition();
+  else if (view === 'daily') loadDaily();
   else if (view === 'weekly') loadWeekly();
+  else if (view === 'trend') loadTrend();
   else if (view === 'tasks') loadTaskMgmt();
 }
 
@@ -850,7 +1178,7 @@ function renderWeekGrid() {
   today.setHours(0, 0, 0, 0);
   // Normalize currentWeekStart to midnight so computed dates don't carry a time offset
   currentWeekStart.setHours(0, 0, 0, 0);
-  const threeDaysAgo = addDays(today, -2);
+  const threeDaysAgo = addDays(today, -(CONFIG.editable_day_window - 1));
 
   // Build task list per subject from first day's records (always has all tasks)
   const subjectTasks = { '英语': [], '数学': [], '语文': [] };
@@ -917,36 +1245,6 @@ function renderWeekGrid() {
     const dayEmoji = dayData ? dayData.emoji : '😭';
     html += `<td class="col-progress">${dayEmoji}</td>`;
 
-    html += '</tr>';
-  }
-
-  // Summary row: per-task weekly progress
-  if (weekData && weekData.task_progress && weekData.task_progress.length > 0) {
-    const subjectClass = { '英语': 'english', '数学': 'math', '语文': 'chinese' };
-    const grouped = { '英语': [], '数学': [], '语文': [] };
-    weekData.task_progress.forEach(tp => {
-      if (grouped[tp.subject]) grouped[tp.subject].push(tp);
-    });
-
-    html += '<tr class="row-summary">';
-    html += '<td class="col-date">达标进度</td>';
-    for (const [subject, tasks] of Object.entries(subjectTasks)) {
-      if (tasks.length === 0) continue;
-      html += '<td class="col-subject">';
-      grouped[subject].forEach(tp => {
-        const pct = tp.weekly_min > 0 ? Math.min(tp.completed_count / tp.weekly_min, 1) : 0;
-        const cls = tp.qualified ? ' qualified' : '';
-        html += `<div class="task-mini-row${cls}">`;
-        html += `<span class="task-mini-name" title="${escapeHtml(tp.name)}">${escapeHtml(tp.name)}</span>`;
-        html += `<div class="task-mini-bar"><div class="task-mini-bar-fill ${subjectClass[subject]}${tp.qualified ? ' qualified' : ''}" style="width:${pct * 100}%"></div></div>`;
-        html += `<span class="task-mini-count">${tp.completed_count}/${tp.weekly_min}</span>`;
-        html += `<span class="task-mini-check">${tp.qualified ? '✅' : ''}</span>`;
-        html += '</div>';
-      });
-      html += '</td>';
-    }
-    html += '<td class="col-earn"></td>';
-    html += '<td class="col-progress"></td>';
     html += '</tr>';
   }
 
@@ -1113,15 +1411,26 @@ async function loadWeekly() {
   currentWeekStr = currentWeekStr || getWeekStr(new Date());
   const monday = parseWeekStr(currentWeekStr);
   document.getElementById('weekRange2').textContent = formatWeekDisplay(currentWeekStr, monday);
-  const data = await api('GET', `/summary/weekly?week=${currentWeekStr}`);
-  if (!data) return;
-  renderWeeklyContent(data);
+  const [summaryData, weekData] = await Promise.all([
+    api('GET', `/summary/weekly?week=${currentWeekStr}`),
+    api('GET', `/records/week?date=${monday.toISOString().split('T')[0]}`)
+  ]);
+  if (!summaryData) return;
+  renderWeeklyContent(summaryData, weekData);
 }
 
-function renderWeeklyContent(data) {
+function renderWeeklyContent(data, weekData) {
   const cont = document.getElementById('weeklyContent');
   const subjects = ['英语', '数学', '语文', '总计'];
   const statClass = { '英语': 'english', '数学': 'math', '语文': 'chinese', '总计': 'total' };
+
+  // Build per-task progress map grouped by subject
+  const taskProgressBySubject = { '英语': [], '数学': [], '语文': [] };
+  if (weekData && weekData.task_progress) {
+    weekData.task_progress.forEach(tp => {
+      if (taskProgressBySubject[tp.subject]) taskProgressBySubject[tp.subject].push(tp);
+    });
+  }
 
   let html = '<div class="weekly-grid">';
   for (const sub of subjects) {
@@ -1133,47 +1442,97 @@ function renderWeeklyContent(data) {
         <div class="weekly-stat ${statClass[sub]}">${s.tasks_met || 0}/${s.total_tasks || 0}</div>
         <div class="weekly-label">达标项目</div>
         <div class="weekly-bar"><div class="weekly-bar-fill ${statClass[sub]}" style="width:${rate * 100}%"></div></div>
-        <div class="weekly-reward">收益: <strong>${s.total_reward || 0}</strong> 鱼干</div>
-      </div>
-    </div>`;
+        <div class="weekly-reward">收益: <strong>${s.total_reward || 0}</strong> 鱼干</div>`;
+
+    // Per-task progress (skip for 总计)
+    if (sub !== '总计' && taskProgressBySubject[sub] && taskProgressBySubject[sub].length > 0) {
+      html += '<div class="weekly-task-progress">';
+      taskProgressBySubject[sub].forEach(tp => {
+        const pct = tp.weekly_min > 0 ? Math.min(tp.completed_count / tp.weekly_min, 1) : 0;
+        const cls = tp.qualified ? ' qualified' : '';
+        html += `<div class="weekly-task-row${cls}">
+          <span class="weekly-task-name">${escapeHtml(tp.name)}</span>
+          <div class="weekly-task-bar"><div class="weekly-task-bar-fill ${statClass[sub]}${tp.qualified ? ' qualified' : ''}" style="width:${pct * 100}%"></div></div>
+          <span class="weekly-task-count">${tp.completed_count}/${tp.weekly_min}</span>
+          <span class="weekly-task-check">${tp.qualified ? '✅' : ''}</span>
+        </div>`;
+      });
+      html += '</div>';
+    }
+
+    html += '</div></div>';
   }
   html += '</div>';
 
-  // Rules explanation
-  html += `
-  <div class="weekly-rules">
-    <h4>🐟 收益怎么算？</h4>
-    <div class="rule-item">
-      <span class="rule-icon">1️⃣</span>
-      <span>每个任务都有一个「每周最低次数」，叫做<strong>达标门槛</strong></span>
-    </div>
-    <div class="rule-item">
-      <span class="rule-icon">2️⃣</span>
-      <span>一周内完成次数 <strong>≥ 达标门槛</strong> = <span class="pass">达标</span>，收益 = 单次收益 × 实际完成次数</span>
-    </div>
-    <div class="rule-item">
-      <span class="rule-icon">3️⃣</span>
-      <span>一周内完成次数 <strong>&lt; 达标门槛</strong> = <span class="fail">未达标</span>，收益 = 0</span>
-    </div>
-    <div class="rule-example">
-      例：「英语背诵」单次收益 1.0，达标门槛 1次/周<br>
-      ✅ 本周完成 2 次 → 达标 → 收益 = 1.0 × 2 = <span class="pass">2.0 鱼干</span><br>
-      ❌ 本周完成 0 次 → 未达标 → 收益 = <span class="fail">0</span>
-    </div>
-    <div class="rule-example">
-      例：「英语单词」单次收益 0.1，达标门槛 5次/周<br>
-      ❌ 本周完成 3 次 → 未达标 → 收益 = <span class="fail">0</span><br>
-      ✅ 本周完成 5 次 → 达标 → 收益 = 0.1 × 5 = <span class="pass">0.5 鱼干</span><br>
-      🌟 本周完成 7 次 → 达标 → 收益 = 0.1 × 7 = <span class="pass">0.7 鱼干</span>（多做多得！）
-    </div>
-    <div class="rule-item" style="margin-top:12px;">
-      <span class="rule-icon">💡</span>
-      <span><strong>小技巧：</strong>达标之后每多做一次都能多赚鱼干哦！</span>
-    </div>
-  </div>`;
-
   cont.innerHTML = html;
 }
+
+// Trend View
+async function loadTrend() {
+  const weeks = document.getElementById('trendWeeks').value;
+  const data = await api('GET', `/summary/multi-week?weeks=${weeks}`);
+  if (!data) return;
+  // Fetch fulfillment status for all weeks
+  const weekStrs = data.map(w => w.week);
+  const fulfillment = await api('GET', `/summary/fulfillment?weeks=${weekStrs.join('&weeks=')}`);
+  renderTrendContent(data, fulfillment || {});
+}
+
+function renderTrendContent(data, fulfillment) {
+  const cont = document.getElementById('trendContent');
+  if (!data.length) { cont.innerHTML = '<div class="loading">暂无数据</div>'; return; }
+
+  const maxReward = Math.max(...data.map(w => w.total_reward), 1);
+  const bestWeek = data.reduce((a, b) => a.tasks_met > b.tasks_met ? a : b);
+  const worstWeek = data.reduce((a, b) => a.tasks_met < b.tasks_met ? a : b);
+
+  let html = '<table class="trend-table"><thead><tr>';
+  html += '<th>周</th><th>数学</th><th>语文</th><th>英语</th><th>总达标率</th><th>趋势</th><th>最终收益</th><th>鼠鼠的总结</th><th>爸爸兑现</th>';
+  html += '</tr></thead><tbody>';
+
+  data.forEach(w => {
+    const barWidth = Math.round((w.total_reward / maxReward) * 80);
+    const rowClass = w === bestWeek ? ' class="trend-best"' : w === worstWeek ? ' class="trend-worst"' : '';
+    const ratePct = Math.round(w.rate * 100);
+    const weekStart = new Date(w.week_start);
+    const weekEnd = addDays(weekStart, 6);
+    const weekLabel = `${weekStart.getFullYear()}年第${parseInt(w.week.split('-W')[1])}周（${weekStart.getMonth()+1}月${weekStart.getDate()}日-${weekEnd.getMonth()+1}月${weekEnd.getDate()}日）`;
+    const isFulfilled = fulfillment[w.week] || false;
+    const canEdit = currentUser && currentUser.role === 'parent';
+    const subEmoji = { '数学': '🔢', '语文': '📝', '英语': '📖' };
+    html += `<tr${rowClass}>`;
+    html += `<td>${weekLabel}</td>`;
+    for (const sub of ['数学', '语文', '英语']) {
+      const sd = w.subjects[sub] || { tasks_met: 0, total_tasks: 0 };
+      const subPct = sd.total_tasks > 0 ? Math.round(sd.tasks_met / sd.total_tasks * 100) : 0;
+      const subColor = sub === '数学' ? '#D97706' : sub === '语文' ? '#059669' : '#2563EB';
+      html += `<td style="color:${subColor};font-weight:600">${sd.tasks_met}/${sd.total_tasks}</td>`;
+    }
+    html += `<td>${ratePct}%</td>`;
+    html += `<td><span class="trend-bar" style="width:${barWidth}px;background:#2D7ED8"></span></td>`;
+    html += `<td class="trend-reward">${w.total_reward}</td>`;
+    html += `<td>${w.emoji}</td>`;
+    html += `<td><input type="checkbox" class="fulfill-check" data-week="${w.week}" ${isFulfilled ? 'checked' : ''} ${canEdit ? '' : 'disabled'}></td>`;
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  cont.innerHTML = html;
+
+  // Add checkbox event listeners
+  cont.querySelectorAll('.fulfill-check').forEach(cb => {
+    cb.addEventListener('change', async (e) => {
+      const week = e.target.dataset.week;
+      const fulfilled = e.target.checked;
+      const resp = await api('PUT', `/summary/fulfillment?week=${week}&fulfilled=${fulfilled}`);
+      if (!resp) {
+        e.target.checked = !fulfilled; // Revert on failure
+      }
+    });
+  });
+}
+
+document.getElementById('trendWeeks').addEventListener('change', loadTrend);
 
 // Task Management (parent only)
 async function loadTaskMgmt() {

@@ -77,6 +77,17 @@ def init_db():
         )
     """)
 
+    # Weekly fulfillment table (爸爸兑现)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS weekly_fulfillment (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            week TEXT UNIQUE NOT NULL,
+            fulfilled BOOLEAN NOT NULL DEFAULT 0,
+            fulfilled_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     # Indexes for query performance
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_records_date_task ON daily_records(date, task_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")

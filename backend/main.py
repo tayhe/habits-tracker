@@ -46,6 +46,11 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/v1/config")
+def get_config():
+    return {"editable_day_window": config.EDITABLE_DAY_WINDOW}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=config.PORT)

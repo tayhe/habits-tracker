@@ -5,6 +5,7 @@ from database import get_db
 from routers.records import get_records_for_date, build_day_records, progress_emoji
 from auth import get_current_user
 import config
+from typing import List
 
 router = APIRouter(prefix="/summary", tags=["summary"])
 
@@ -147,3 +148,105 @@ def get_week_earn(
         total_earn=round(total_earn, 2),
         completed_days=completed_days
     )
+
+
+@router.get("/multi-week")
+def multi_week_summary(
+    weeks: int = Query(8, ge=1, le=26),
+    user: dict = Depends(get_current_user)
+):
+    """Return summary for the last N weeks for trend comparison."""
+    today = date.today()
+    current_week_start = today - timedelta(days=today.weekday())
+
+    results = []
+    for i in range(weeks):
+        offset = i * 7
+        week_monday = current_week_start - timedelta(days=offset)
+        week_sunday = week_monday + timedelta(days=6)
+        week_str = f"{week_monday.year}-W{week_monday.isocalendar()[1]:02d}"
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT task_id, name, subject, reward, weekly_min FROM tasks")
+            tasks = {row["task_id"]: dict(row) for row in cursor.fetchall()}
+
+            week_start_str = week_monday.isoformat()
+            week_end_str = (week_monday + timedelta(days=7)).isoformat()
+
+            all_task_ids = list(tasks.keys())
+            tasks_met = 0
+            total_tasks = len(all_task_ids)
+            total_reward = 0.0
+            subject_data = {s: {"tasks_met": 0, "total_tasks": 0} for s in config.SUBJECTS}
+
+            if all_task_ids:
+                placeholders = ",".join(["?"] * len(all_task_ids))
+                cursor.execute(f"""
+                    SELECT task_id, COUNT(*) as cnt
+                    FROM daily_records
+                    WHERE date >= ? AND date < ? AND task_id IN ({placeholders}) AND completed = 1
+                    GROUP BY task_id
+                """, [week_start_str, week_end_str] + all_task_ids)
+                completion_counts = {row["task_id"]: row["cnt"] for row in cursor.fetchall()}
+
+                for t in tasks.values():
+                    subject = t["subject"]
+                    subject_data[subject]["total_tasks"] += 1
+                    cnt = completion_counts.get(t["task_id"], 0)
+                    if cnt >= t["weekly_min"]:
+                        tasks_met += 1
+                        subject_data[subject]["tasks_met"] += 1
+                        total_reward += t["reward"] * cnt
+
+        rate = tasks_met / total_tasks if total_tasks > 0 else 0
+        results.append({
+            "week": week_str,
+            "week_start": week_monday.isoformat(),
+            "tasks_met": tasks_met,
+            "total_tasks": total_tasks,
+            "rate": round(rate, 2),
+            "total_reward": round(total_reward, 2),
+            "emoji": progress_emoji(tasks_met, total_tasks),
+            "subjects": {
+                s: {
+                    "tasks_met": subject_data[s]["tasks_met"],
+                    "total_tasks": subject_data[s]["total_tasks"],
+                } for s in config.SUBJECTS
+            },
+        })
+
+    results.reverse()  # oldest first
+    return results
+
+
+@router.get("/fulfillment")
+def get_fulfillment(weeks: List[str] = Query(...), user: dict = Depends(get_current_user)):
+    """Get fulfillment status for multiple weeks."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        placeholders = ",".join(["?"] * len(weeks))
+        cursor.execute(f"""
+            SELECT week, fulfilled FROM weekly_fulfillment
+            WHERE week IN ({placeholders})
+        """, weeks)
+        rows = {row["week"]: bool(row["fulfilled"]) for row in cursor.fetchall()}
+    return rows
+
+
+@router.put("/fulfillment")
+def update_fulfillment(week: str, fulfilled: bool, user: dict = Depends(get_current_user)):
+    """Update fulfillment status for a week. Only parent can update."""
+    if user["role"] != "parent":
+        raise HTTPException(status_code=403, detail="Only parent can update fulfillment")
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO weekly_fulfillment (week, fulfilled, fulfilled_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(week) DO UPDATE SET
+                fulfilled = excluded.fulfilled,
+                fulfilled_at = excluded.fulfilled_at
+        """, (week, fulfilled, date.today().isoformat() if fulfilled else None))
+        conn.commit()
+    return {"message": "Updated"}
