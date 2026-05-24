@@ -134,7 +134,8 @@
     z-index: 10;
   }
   .habit-table thead th.col-date { width: 100px; text-align: left; }
-  .habit-table thead th.col-earn, .habit-table thead th.col-progress { width: 110px; }
+  .habit-table thead th.col-earn { width: 110px; }
+  .habit-table thead th.col-progress { width: 200px; }
   .habit-table thead th.col-subject { }
 
   /* Date column */
@@ -262,7 +263,8 @@
   }
   #footerStats .stat { color: #9B9A97; }
   #footerStats .stat strong { color: #37352F; }
-  #footerStats .emoji { font-size: 20px; }
+  #footerStats .emoji { font-size: 20px; white-space: nowrap; }
+  .progress-bar { font-family: monospace; font-size: 13px; letter-spacing: 1px; color: #37352F; background: none; padding: 0; }
 
   /* Weekly Summary View */
   #weeklyView {
@@ -761,7 +763,8 @@
   @media (max-width: 600px) {
     .habit-table { font-size: 11px; }
     .task-chip { padding: 2px 5px; font-size: 10px; }
-    .col-earn, .col-progress { width: 60px; }
+    .col-earn { width: 60px; }
+    .col-progress { width: auto; min-width: 100px; }
     .weekly-grid { grid-template-columns: 1fr; }
   }
 </style>
@@ -811,7 +814,7 @@
       <div class="ambition-hero">
         <div class="ambition-hero-emoji">🐟</div>
         <h1>喵喵的雄心</h1>
-        <p class="ambition-subtitle">我的学习任务奖励计划</p>
+        <p class="ambition-subtitle">为了小鱼干，冲鸭！</p>
       </div>
       <div id="ambitionContent"></div>
     </div>
@@ -827,7 +830,7 @@
       <div id="weekGrid"></div>
       <div id="footerStats">
         <span id="todayProgress">今日完成: --/--</span>
-        <span class="emoji" id="todayEmoji">😭</span>
+        <span class="emoji" id="todayEmoji">😿</span>
         <span id="weekEarn">本周已获: -- 鱼干</span>
       </div>
     </div>
@@ -962,11 +965,29 @@ function formatMD(d) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-// Progress emoji
+// Progress emoji + bar
 function progressEmoji(completed, total) {
-  if (total === 0) return '😭';
+  if (total === 0) return '😿';
   const rate = completed / total;
-  return rate >= 1.0 ? '🐟🐡' : rate >= 0.5 ? '🐟' : '😭';
+  if (rate >= 1.0) return '😺🎉';
+  if (rate >= 0.75) return '😺';
+  if (rate >= 0.5) return '😸';
+  if (rate >= 0.25) return '😼';
+  if (rate > 0) return '😾';
+  return '😿';
+}
+
+function progressBar(completed, total, maxLen = 15) {
+  if (total === 0) return '░'.repeat(Math.min(4, maxLen));
+  const len = Math.min(total, maxLen);
+  const filled = Math.round((completed / total) * len);
+  return '▓'.repeat(filled) + '░'.repeat(len - filled);
+}
+
+function progressDisplay(completed, total, maxLen = 15) {
+  const emoji = progressEmoji(completed, total);
+  const bar = progressBar(completed, total, maxLen);
+  return `${emoji} <code class="progress-bar">${bar}</code> ${completed}/${total}`;
 }
 
 // Subject colors and icons
@@ -1241,9 +1262,12 @@ function renderWeekGrid() {
     const dayEarn = dayData ? dayData.total_reward : 0;
     html += `<td class="col-earn">${dayEarn}</td>`;
 
-    // Progress emoji column
-    const dayEmoji = dayData ? dayData.emoji : '😭';
-    html += `<td class="col-progress">${dayEmoji}</td>`;
+    // Progress column (emoji + bar)
+    if (dayData) {
+      html += `<td class="col-progress">${progressDisplay(dayData.completed_count, dayData.total_count)}</td>`;
+    } else {
+      html += `<td class="col-progress">😿</td>`;
+    }
 
     html += '</tr>';
   }
@@ -1355,7 +1379,7 @@ function updateFooterStats() {
   if (todayData) {
     document.getElementById('todayProgress').textContent =
       `今日完成: ${todayData.completed_count}/${todayData.total_count}`;
-    document.getElementById('todayEmoji').textContent = todayData.emoji;
+    document.getElementById('todayEmoji').innerHTML = progressDisplay(todayData.completed_count, todayData.total_count);
   }
 
   document.getElementById('weekEarn').textContent =
@@ -1511,7 +1535,7 @@ function renderTrendContent(data, fulfillment) {
     html += `<td>${ratePct}%</td>`;
     html += `<td><span class="trend-bar" style="width:${barWidth}px;background:#2D7ED8"></span></td>`;
     html += `<td class="trend-reward">${w.total_reward}</td>`;
-    html += `<td>${w.emoji}</td>`;
+    html += `<td>${progressDisplay(w.tasks_met, w.total_tasks, 10)}</td>`;
     html += `<td><input type="checkbox" class="fulfill-check" data-week="${w.week}" ${isFulfilled ? 'checked' : ''} ${canEdit ? '' : 'disabled'}></td>`;
     html += '</tr>';
   });

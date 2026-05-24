@@ -11,14 +11,20 @@ router = APIRouter(prefix="/records", tags=["records"])
 
 def progress_emoji(completed_count: int, total_count: int) -> str:
     if total_count == 0:
-        return "😭"
+        return "😿"
     rate = completed_count / total_count
     if rate >= 1.0:
-        return "🐟🐡"
+        return "😺🎉"
+    elif rate >= 0.75:
+        return "😺"
     elif rate >= 0.5:
-        return "🐟"
+        return "😸"
+    elif rate >= 0.25:
+        return "😼"
+    elif rate > 0:
+        return "😾"
     else:
-        return "😭"
+        return "😿"
 
 
 def get_records_for_date(d: date) -> List[RecordOut]:
