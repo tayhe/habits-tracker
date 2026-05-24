@@ -322,6 +322,7 @@
   .weekly-stat.chinese { color: #059669; }
   .weekly-stat.total { color: #37352F; }
   .weekly-label { font-size: 12px; color: #9B9A97; margin-bottom: 16px; }
+  .weekly-hero-emoji { font-size: 56px; margin-top: 16px; text-align: center; }
   .weekly-bar {
     height: 8px;
     background: #E9E9E7;
@@ -992,8 +993,8 @@ function progressDisplay(completed, total, maxLen = 15) {
 
 // Subject colors and icons
 const SUBJECT_INFO = {
-  '英语': { class: 'english', emoji: '📖', color: '#2563EB' },
-  '数学': { class: 'math', emoji: '🔢', color: '#D97706' },
+  '英语': { class: 'english', emoji: '🔤', color: '#2563EB' },
+  '数学': { class: 'math', emoji: '🧮', color: '#D97706' },
   '语文': { class: 'chinese', emoji: '📝', color: '#059669' }
 };
 
@@ -1039,8 +1040,8 @@ function renderAmbitionContent(tasks) {
   const cont = document.getElementById('ambitionContent');
   const subjects = ['英语', '数学', '语文'];
   const subjectInfo = {
-    '英语': { emoji: '📖', class: 'english', color: '#2563EB' },
-    '数学': { emoji: '🔢', class: 'math', color: '#D97706' },
+    '英语': { emoji: '🔤', class: 'english', color: '#2563EB' },
+    '数学': { emoji: '🧮', class: 'math', color: '#D97706' },
     '语文': { emoji: '📝', class: 'chinese', color: '#059669' }
   };
 
@@ -1461,7 +1462,7 @@ function renderWeeklyContent(data, weekData) {
     const s = data[sub] || {};
     const rate = s.rate || 0;
     html += `<div class="weekly-card">
-      <div class="weekly-card-header ${statClass[sub]}">${escapeHtml(sub)}</div>
+      <div class="weekly-card-header ${statClass[sub]}">${sub !== '总计' ? SUBJECT_INFO[sub].emoji + ' ' : ''}${escapeHtml(sub)}</div>
       <div class="weekly-card-body">
         <div class="weekly-stat ${statClass[sub]}">${s.tasks_met || 0}/${s.total_tasks || 0}</div>
         <div class="weekly-label">达标项目</div>
@@ -1482,6 +1483,11 @@ function renderWeeklyContent(data, weekData) {
         </div>`;
       });
       html += '</div>';
+    }
+
+    // Large emoji for 总计 card
+    if (sub === '总计') {
+      html += `<div class="weekly-hero-emoji">${progressEmoji(s.tasks_met || 0, s.total_tasks || 0)}</div>`;
     }
 
     html += '</div></div>';
@@ -1511,7 +1517,7 @@ function renderTrendContent(data, fulfillment) {
   const worstWeek = data.reduce((a, b) => a.tasks_met < b.tasks_met ? a : b);
 
   let html = '<table class="trend-table"><thead><tr>';
-  html += '<th>周</th><th>数学</th><th>语文</th><th>英语</th><th>总达标率</th><th>趋势</th><th>最终收益</th><th>鼠鼠的总结</th><th>爸爸兑现</th>';
+  html += '<th>周</th><th>🧮 数学</th><th>📝 语文</th><th>🔤 英语</th><th>总达标率</th><th>趋势</th><th>🐹 鼠鼠的总结</th><th>最终收益</th><th>爸爸兑现了吗</th>';
   html += '</tr></thead><tbody>';
 
   data.forEach(w => {
@@ -1523,7 +1529,7 @@ function renderTrendContent(data, fulfillment) {
     const weekLabel = `${weekStart.getFullYear()}年第${parseInt(w.week.split('-W')[1])}周（${weekStart.getMonth()+1}月${weekStart.getDate()}日-${weekEnd.getMonth()+1}月${weekEnd.getDate()}日）`;
     const isFulfilled = fulfillment[w.week] || false;
     const canEdit = currentUser && currentUser.role === 'parent';
-    const subEmoji = { '数学': '🔢', '语文': '📝', '英语': '📖' };
+    const subEmoji = { '数学': '🧮', '语文': '📝', '英语': '🔤' };
     html += `<tr${rowClass}>`;
     html += `<td>${weekLabel}</td>`;
     for (const sub of ['数学', '语文', '英语']) {
@@ -1534,8 +1540,8 @@ function renderTrendContent(data, fulfillment) {
     }
     html += `<td>${ratePct}%</td>`;
     html += `<td><span class="trend-bar" style="width:${barWidth}px;background:#2D7ED8"></span></td>`;
-    html += `<td class="trend-reward">${w.total_reward}</td>`;
     html += `<td>${progressDisplay(w.tasks_met, w.total_tasks, 10)}</td>`;
+    html += `<td class="trend-reward">${w.total_reward}</td>`;
     html += `<td><input type="checkbox" class="fulfill-check" data-week="${w.week}" ${isFulfilled ? 'checked' : ''} ${canEdit ? '' : 'disabled'}></td>`;
     html += '</tr>';
   });
