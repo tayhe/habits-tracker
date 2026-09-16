@@ -1,7 +1,10 @@
 import sqlite3
+import shutil
+import subprocess
+from datetime import datetime
 from contextlib import contextmanager
 
-import config
+from . import config
 
 DB_PATH = config.DB_PATH
 
@@ -10,7 +13,51 @@ def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
+
+
+def backup_database_if_needed():
+    """Backup database weekly and retain at most MAX_BACKUPS (oldest deleted)."""
+    if not DB_PATH.exists():
+        return None
+
+    config.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    now = datetime.now()
+    iso_year, iso_week, _ = now.isocalendar()
+    backup_name = f"habits_{iso_year}_w{iso_week:02d}.db"
+    backup_file = config.BACKUP_DIR / backup_name
+
+    created = False
+    if not backup_file.exists():
+        source_conn = get_connection()
+        try:
+            dest_conn = sqlite3.connect(str(backup_file))
+            try:
+                source_conn.backup(dest_conn)
+                created = True
+                print(f"[Backup] Created weekly backup: {backup_file.name}")
+            finally:
+                dest_conn.close()
+        finally:
+            source_conn.close()
+
+    # Prune older backups, keeping only the most recent MAX_BACKUPS
+    backups = sorted(config.BACKUP_DIR.glob("habits_*_w*.db"), key=lambda p: p.name)
+    if len(backups) > config.MAX_BACKUPS:
+        to_remove = backups[:-config.MAX_BACKUPS]
+        trash_cmd = shutil.which("trash-put")
+        for old_file in to_remove:
+            try:
+                if trash_cmd:
+                    subprocess.run([trash_cmd, str(old_file)], check=True)
+                else:
+                    old_file.unlink(missing_ok=True)
+                print(f"[Backup] Pruned old backup: {old_file.name}")
+            except Exception as e:
+                print(f"[Backup] Failed to remove {old_file.name}: {e}")
+
+    return backup_file if created else None
 
 
 @contextmanager
@@ -134,6 +181,13 @@ def init_db():
             "INSERT INTO tasks (task_id, subject, name, reward, weekly_min, sort_weight) VALUES (?, ?, ?, ?, ?, ?)",
             initial_tasks
         )
+        conn.commit()
+
+    # Schema versioning
+    cursor.execute("PRAGMA user_version")
+    current_version = cursor.fetchone()[0]
+    if current_version == 0:
+        cursor.execute("PRAGMA user_version = 1")
         conn.commit()
 
     conn.close()

@@ -1,15 +1,36 @@
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
-import database
-import config
-from routers import tasks, records, summary, auth_router
+from . import database, config, auth
+from .routers import tasks, records, summary, auth_router
 
-database.init_db()
 
-app = FastAPI(title="Habits Tracker API", version="1.0.0")
+async def periodic_maintenance():
+    """Background task to run backup check and session cleanup daily."""
+    while True:
+        try:
+            database.backup_database_if_needed()
+            auth.cleanup_expired_sessions()
+        except Exception as e:
+            print(f"[Maintenance Error] {e}")
+        await asyncio.sleep(24 * 3600)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    database.init_db()
+    database.backup_database_if_needed()
+    auth.cleanup_expired_sessions()
+    task = asyncio.create_task(periodic_maintenance())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="Habits Tracker API", version="1.0.0", lifespan=lifespan)
 
 # CORS - allow all for LAN access (no credentials needed since frontend is same-origin)
 app.add_middleware(

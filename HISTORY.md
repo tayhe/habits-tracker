@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-09-16 v4.0 — 前端 Vue 3 零构建迁移 + 健壮性与架构深度优化
+
+### 前端 Vue 3 零构建与响应式重构
+- **零构建引入 Vue 3**：引入本地自托管的浏览器原生 ESM 版本（`frontend/vendor/vue.esm-browser.prod.js`），完全脱离 Node.js 构建链
+- **模块化解耦**：将原来 1740+ 行的单文件解耦为声明式模板（`index.html`）、核心响应式逻辑（`app.js`）以及样式表（`style.css`）
+- **移动端 PWA 支持**：新增 `frontend/manifest.json` 与移动端 Touch 图标配置，支持在手机与 iPad 浏览器中“添加到主屏幕”作为全屏 App 运行
+- **静态素材收纳**：新建 `frontend/assets/` 统一收拢 `dedenne.png` 与 `favicon.svg`
+
+### 后端架构规范化与配置增强
+- **消除 PYTHONPATH 约束**：新增 `backend/__init__.py` 并全面重构为标准相对包导入，开箱即用，无需再设置 `PYTHONPATH=backend`
+- **环境变量配置支持**：`config.py` 支持 `PORT`、`DATA_DIR`、`MAX_BACKUPS`、`COOKIE_MAX_AGE` 等环境变量覆盖
+- **模型升级**：Pydantic 模型全面升级使用 `model_config = ConfigDict(from_attributes=True)`，消除 V2 弃用警告
+
+### 存储健壮性与自动维护
+- **SQLite WAL 模式**：启用 `PRAGMA journal_mode = WAL`，读写互不阻塞，增强异常断电抗损坏能力
+- **每周滚动备份**：每周自动生成快照备份至 `data/backups/habits_YYYY_wWW.db`，严格保留最新 3 份，历史旧备份自动移入回收站
+- **过期 Session 定期回收**：FastAPI `lifespan` 启动及每 24 小时自动清理过期会话
+- **数据库版本控制**：引入 `PRAGMA user_version` 原地轻量 Schema 迁移机制
+
+### 测试套件与工程清理
+- **自动化单元测试**：建立 `tests/` 目录并接入 `pytest`，对收益结算、达标门槛、7天编辑期限和备份修剪等核心业务规则建立测试防护网
+- **清理冗余工具链**：移除未使用的 Node.js/Playwright 残留文件，将 `CLAUDE.md` 全部核心说明合并入 `README.md` 并移除冗余文档
+
+---
+
 ## 2026-05-24 — 一周战果数据统一 + 收益术语澄清
 
 ### 一周战果页面数据源统一

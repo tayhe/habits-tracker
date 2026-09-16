@@ -11,17 +11,15 @@ __pycache__/
 .venv/
 venv/
 
-# Node (Playwright test tooling only)
-node_modules/
-package.json
-package-lock.json
 
 # Environment variables
 .env
 
-# IDE
+# IDE & Tools
 .idea/
 .vscode/
+.claude/
+.mimocode/
 *.swp
 *.swo
 

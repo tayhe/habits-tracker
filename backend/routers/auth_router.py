@@ -1,9 +1,8 @@
 from fastapi import APIRouter, HTTPException, Response, Cookie, Depends
 from typing import Optional
-import auth
-import config
-from models import LoginRequest, LoginResponse, UserOut, ChangePasswordRequest
-from auth import get_current_user
+from .. import auth, config
+from ..models import LoginRequest, LoginResponse, UserOut, ChangePasswordRequest
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -42,7 +41,7 @@ def me(user: dict = Depends(get_current_user)):
 
 @router.put("/password")
 def change_password(request: ChangePasswordRequest, user: dict = Depends(get_current_user)):
-    from database import get_db
+    from ..database import get_db
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT password_hash FROM users WHERE id = ?", (user["id"],))

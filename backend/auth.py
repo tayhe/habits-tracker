@@ -3,8 +3,8 @@ import bcrypt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Cookie, Depends
 from typing import Optional
-from database import get_db
-import config
+from .database import get_db
+from . import config
 
 
 def hash_password(password: str) -> str:
@@ -68,6 +68,22 @@ def delete_session(token: str):
         cursor = conn.cursor()
         cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
         conn.commit()
+
+
+def cleanup_expired_sessions():
+    """Delete all sessions older than COOKIE_MAX_AGE."""
+    cutoff = datetime.now() - timedelta(seconds=config.COOKIE_MAX_AGE)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM sessions WHERE created_at < ?",
+            (cutoff.isoformat(),)
+        )
+        deleted = cursor.rowcount
+        conn.commit()
+    if deleted > 0:
+        print(f"[Auth] Cleaned up {deleted} expired session(s)")
+    return deleted
 
 
 # --- Auth dependencies for FastAPI ---

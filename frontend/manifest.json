@@ -1,0 +1,26 @@
+{
+  "name": "小鱼干·学习习惯追踪",
+  "short_name": "小鱼干打卡",
+  "description": "帮助小朋友追踪每日学习习惯完成情况",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#F7F6F3",
+  "icons": [
+    {
+      "src": "/app/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/app/assets/dedenne.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app/assets/dedenne.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

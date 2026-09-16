@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date
 
@@ -17,8 +17,7 @@ class UserOut(UserBase):
     id: int
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Task ---
@@ -45,8 +44,7 @@ class TaskUpdate(BaseModel):
 class TaskOut(TaskBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Daily Record ---

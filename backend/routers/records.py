@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
 from datetime import date, datetime, timedelta
-from models import RecordUpdate, RecordOut, DayRecords, WeekRecords, TaskProgress
-from database import get_db
-from auth import get_current_user
-import config
+from ..models import RecordUpdate, RecordOut, DayRecords, WeekRecords, TaskProgress
+from ..database import get_db
+from ..auth import get_current_user
+from .. import config
 
 router = APIRouter(prefix="/records", tags=["records"])
 

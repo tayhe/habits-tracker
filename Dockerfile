@@ -17,7 +17,7 @@ COPY backend/ backend/
 COPY frontend/ frontend/
 
 # Environment
-ENV PYTHONPATH=backend
+ENV PYTHONPATH=.
 ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 15000

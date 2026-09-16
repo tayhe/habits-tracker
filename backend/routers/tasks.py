@@ -1,9 +1,9 @@
 import sqlite3
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from models import TaskCreate, TaskUpdate, TaskOut
-from database import get_db
-from auth import get_current_user, require_parent
+from ..models import TaskCreate, TaskUpdate, TaskOut
+from ..database import get_db
+from ..auth import get_current_user, require_parent
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
