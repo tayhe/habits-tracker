@@ -199,24 +199,31 @@ uv run pytest
 habits-tracker/
 ├── backend/          # FastAPI 后端标准包
 │   ├── __init__.py   # 标识标准 Python Package
-│   ├── main.py       # 入口、路由注册、Lifespan 周期任务
+│   ├── main.py       # 入口、路由注册、Lifespan 周期任务与全局异常拦截
 │   ├── config.py     # 环境变量读取与配置项（端口、路径等）
-│   ├── models.py     # Pydantic 请求/响应数据模型
-│   ├── database.py   # SQLite 连接（WAL）、表初始化、版本控制与滚动备份
+│   ├── models.py     # Pydantic 请求/响应数据模型（开启 extra='forbid'）
+│   ├── database.py   # SQLite 连接（WAL）、表初始化、版本迁移、事务与滚动备份
 │   ├── auth.py       # Cookie 会话鉴权与过期 Session 清理
+│   ├── weeks.py      # ISO 8601 标准周算法收敛与严格解析器
+│   ├── rules.py      # 业务核心纯函数（猫猫表情、进度条、达标收益、权限窗口）
 │   └── routers/      # API 路由拆分（auth, tasks, records, summary）
-├── frontend/         # 前端静态单页（由 FastAPI 托管）
+├── frontend/         # 前端静态单页（由 FastAPI 托管，零构建 ESM）
 │   ├── index.html    # 声明式 SPA 模板
-│   ├── app.js        # Vue 3 核心业务逻辑（ESM 模块）
+│   ├── app.js        # Vue 3 核心业务逻辑（ISO 8601 周计算与视图响应式状态）
 │   ├── style.css     # Notion 极简风格样式
 │   ├── manifest.json # PWA 渐进式 Web 应用配置
 │   ├── assets/       # 图片与图标素材（PNG, SVG）
 │   └── vendor/       # 离线自托管 Vue 3 运行时
-├── tests/            # 核心业务算法与权限规则单元测试（pytest）
+├── tests/            # 自动化测试套件（pytest + TestClient）
+│   ├── conftest.py   # 临时环境隔离与认证客户端 Fixture
+│   ├── test_api_regressions.py # P0/P1 回归测试与边界校验
+│   ├── test_weeks.py # ISO 周算法属性与跨年边界对拍测试
+│   ├── test_concurrency.py     # 并发写入与 Busy Timeout 锁测试
+│   └── test_rules.py # 核心业务规则与备份轮转单元测试
 ├── data/             # SQLite 数据库与备份（已 gitignore）
-├── Dockerfile        # 纯 Python 轻量级生产镜像定义
-├── docker-compose.yml# 宿主机网络与数据卷持久化
-└── pyproject.toml    # 项目依赖、测试与元数据配置
+├── Dockerfile        # 纯 Python 生产镜像（非 root 用户 appuser 运行）
+├── docker-compose.yml# 端口映射、卷挂载与 healthcheck 探针
+└── pyproject.toml    # 项目依赖、测试配置与 Ruff Linter 规范
 ```
 
 ## 相关文档

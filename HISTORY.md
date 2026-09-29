@@ -2,7 +2,39 @@
 
 ---
 
+## 2026-09-29 v4.1 — 架构缺陷根治、ISO 周算法归一与 P0/P1 缺陷修复
+
+### P0 缺陷止血与数据完整性保障
+- **任务软删除机制**：`tasks` 表新增 `deleted_at` 字段（通过 `PRAGMA user_version = 2` 自动迁移），物理删除改为软删除（归档）。彻底解决由于外键约束引发的删除任务 500 崩溃，同时保障历史打卡记录和统计账单完整不丢。
+- **任务科目动态修改生效**：`TaskUpdate` 模型补全 `subject` 字段，并在所有核心请求模型增加 `extra="forbid"`，杜绝非法或未知字段被静默忽略产生的“假成功”。
+- **登录失败交互反馈**：修复前端 `api()` 吞噬 401 导致密码输错无任何反应的问题，增加错误 Toast 提示。
+- **登出幽灵会话彻底销毁**：修正登出接口 Cookie 参数名绑定（`token` -> `session_token`），确保登出后服务端 session 记录物理删除。
+- **全局异常处理与并发锁保护**：全局捕获 `sqlite3.IntegrityError`（409）与 `sqlite3.OperationalError`（503 锁提示）；连接开启 `timeout=30.0` 与 `PRAGMA busy_timeout = 30000`，杜绝局域网并发写锁死。
+
+### ISO 8601 周算法收敛与跨年死锁根治
+- **新建权威周计算模块**：新增 `backend/weeks.py`，统一提供标准 `iso_week_label`、`monday_of`、`sunday_of` 与严格解析器 `parse_week_label`（周号越界如 `W99` 直接返回 400）。
+- **根除跨年错周与翻页死循环**：
+  - 后端统一用 ISO 年推导周标签，彻底解决 `date.year` 跨年周编号撞名问题；
+  - 前端 `getWeekStr` 与 `parseWeekStr` 重构为标准 ISO 8601 算法，彻底解决在特定年份按“上一周”无限循环停留在同周的问题；
+  - `/records/week` 接口响应下发权威 `week` 字段供前端直接消费。
+
+### 业务规则解耦与查询性能优化
+- **业务规则下沉纯函数**：新建 `backend/rules.py`，收纳猫猫表情分级（`progress_emoji`）、进度条（`progress_bar`）、达标收益结算（`calculate_reward`）和儿童编辑窗口校验（`assert_editable_for_child`），消除 Router 间反向耦合。
+- **消除 N+1 数据库查询风暴**：
+  - `/records/range` 增加 93 天最大跨度防护，从逐日单次连接查询优化为单连接 2 条聚合 SQL，耗时从 28s 降至毫秒级；
+  - `/summary/multi-week` 将数据库连接和 tasks 查询移出循环外，消除 26 次重复连接。
+- **自动事务纪律与备份容错**：`get_db()` 上下文管理器实现正常退出自动 `commit`、异常自动 `rollback`；周备份自动修剪在跨卷调用 `trash-put` 失败时自动安全 fallback 到直接删除。
+- **改密安全吊销**：用户修改密码后，立即注销该用户所有历史 Session，并为当前操作设备签发新 Token。
+
+### 真实自动化测试网建立与容器加固
+- **彻底重构测试套件**：废弃原先 4/6 空转的伪测试，新增 `tests/conftest.py`（临时库与 Client fixture）、`tests/test_api_regressions.py`、`tests/test_weeks.py` 和 `tests/test_concurrency.py`，形成 16 项真实运行的高覆盖防回归网。
+- **代码规范接入 Ruff**：配置 `pyproject.toml` 中的 `[tool.ruff]`，通过 `uv run ruff check` 自动规范代码风格与导入。
+- **容器安全加固**：Dockerfile 新建非 root 用户 `appuser`（UID/GID 1002）运行，`docker-compose.yml` 增加 `healthcheck` 健康检查探针与显式端口映射。
+
+---
+
 ## 2026-09-16 v4.0 — 前端 Vue 3 零构建迁移 + 健壮性与架构深度优化
+
 
 ### 前端 Vue 3 零构建与响应式重构
 - **零构建引入 Vue 3**：引入本地自托管的浏览器原生 ESM 版本（`frontend/vendor/vue.esm-browser.prod.js`），完全脱离 Node.js 构建链
