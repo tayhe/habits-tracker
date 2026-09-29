@@ -1,9 +1,12 @@
 import sqlite3
-from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime
 from typing import List
-from ..models import TaskCreate, TaskUpdate, TaskOut
-from ..database import get_db
+
+from fastapi import APIRouter, Depends, HTTPException
+
 from ..auth import get_current_user, require_parent
+from ..database import get_db
+from ..models import TaskCreate, TaskOut, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -11,7 +14,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 def get_all_tasks():
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM tasks ORDER BY sort_weight DESC")
+        cursor.execute("SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY sort_weight DESC")
         return [dict(row) for row in cursor.fetchall()]
 
 
@@ -55,6 +58,9 @@ def update_task(task_id: str, task: TaskUpdate, user: dict = Depends(require_par
     if task.name is not None:
         updates.append("name = ?")
         params.append(task.name)
+    if task.subject is not None:
+        updates.append("subject = ?")
+        params.append(task.subject)
     if task.reward is not None:
         updates.append("reward = ?")
         params.append(task.reward)
@@ -69,7 +75,7 @@ def update_task(task_id: str, task: TaskUpdate, user: dict = Depends(require_par
     params.append(task_id)
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE task_id = ?", params)
+        cursor.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE task_id = ? AND deleted_at IS NULL", params)
         conn.commit()
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
@@ -80,8 +86,10 @@ def update_task(task_id: str, task: TaskUpdate, user: dict = Depends(require_par
 def delete_task(task_id: str, user: dict = Depends(require_parent)):
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM tasks WHERE task_id = ?", (task_id,))
+        now = datetime.now().isoformat()
+        cursor.execute("UPDATE tasks SET deleted_at = ? WHERE task_id = ? AND deleted_at IS NULL", (now, task_id))
         conn.commit()
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
     return {"message": "Task deleted"}
+

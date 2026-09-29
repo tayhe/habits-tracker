@@ -1,12 +1,15 @@
-import os
 import asyncio
+import os
+import sqlite3
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from . import database, config, auth
-from .routers import tasks, records, summary, auth_router
+
+from . import auth, config, database
+from .routers import auth_router, records, summary, tasks
 
 
 async def periodic_maintenance():
@@ -31,6 +34,28 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Habits Tracker API", version="1.0.0", lifespan=lifespan)
+
+
+@app.exception_handler(sqlite3.IntegrityError)
+async def integrity_error_handler(request, exc):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": f"数据完整性冲突: {str(exc)}"}
+    )
+
+
+@app.exception_handler(sqlite3.OperationalError)
+async def operational_error_handler(request, exc):
+    if "locked" in str(exc).lower():
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "数据库忙，请稍后重试"}
+        )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"数据库操作异常: {str(exc)}"}
+    )
+
 
 # CORS - allow all for LAN access (no credentials needed since frontend is same-origin)
 app.add_middleware(

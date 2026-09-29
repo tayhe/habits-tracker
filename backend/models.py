@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
 from datetime import date
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
 
 
 # --- User ---
@@ -31,14 +32,17 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
+    subject: Optional[str] = None
     reward: Optional[float] = None
     weekly_min: Optional[int] = None
     sort_weight: Optional[int] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class TaskOut(TaskBase):
@@ -52,6 +56,8 @@ class RecordUpdate(BaseModel):
     date: date
     task_id: str
     completed: bool
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class RecordOut(BaseModel):
@@ -84,12 +90,14 @@ class TaskProgress(BaseModel):
 
 
 class WeekRecords(BaseModel):
+    week: str = ""    # e.g. "2026-W21"
     week_start: date  # Monday of the week
     week_end: date    # Sunday of the week
     days: list[DayRecords]  # 7 DayRecords, Monday to Sunday
     expected_earn: float
     week_completed_days: int
     task_progress: list[TaskProgress]
+
 
 
 # --- Week Earn Summary ---
@@ -107,6 +115,8 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class LoginResponse(BaseModel):
     user: UserOut
@@ -116,3 +126,5 @@ class LoginResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
+
+    model_config = ConfigDict(extra="forbid")

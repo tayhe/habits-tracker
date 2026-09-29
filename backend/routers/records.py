@@ -1,37 +1,22 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
-from typing import List
 from datetime import date, datetime, timedelta
-from ..models import RecordUpdate, RecordOut, DayRecords, WeekRecords, TaskProgress
-from ..database import get_db
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from .. import weeks
 from ..auth import get_current_user
-from .. import config
+from ..database import get_db
+from ..models import DayRecords, RecordOut, RecordUpdate, TaskProgress, WeekRecords
+from ..rules import assert_editable_for_child, progress_emoji
 
 router = APIRouter(prefix="/records", tags=["records"])
-
-
-def progress_emoji(completed_count: int, total_count: int) -> str:
-    if total_count == 0:
-        return "😿"
-    rate = completed_count / total_count
-    if rate >= 1.0:
-        return "😺🎉"
-    elif rate >= 0.75:
-        return "😺"
-    elif rate >= 0.5:
-        return "😸"
-    elif rate >= 0.25:
-        return "😼"
-    elif rate > 0:
-        return "😾"
-    else:
-        return "😿"
 
 
 def get_records_for_date(d: date) -> List[RecordOut]:
     """Get all tasks for a date, with completed=false for missing records."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT task_id, name, subject, reward FROM tasks ORDER BY sort_weight DESC")
+        cursor.execute("SELECT task_id, name, subject, reward FROM tasks WHERE deleted_at IS NULL ORDER BY sort_weight DESC")
         task_rows = cursor.fetchall()
         cursor.execute("SELECT task_id, completed FROM daily_records WHERE date = ?", (d.isoformat(),))
         record_map = {row["task_id"]: bool(row["completed"]) for row in cursor.fetchall()}
@@ -75,13 +60,41 @@ def get_range_records(
     end: date = Query(...),
     user: dict = Depends(get_current_user)
 ):
+    if end < start:
+        raise HTTPException(status_code=400, detail="结束日期必须大于或等于开始日期")
+    if (end - start).days > 93:
+        raise HTTPException(status_code=400, detail="查询区间不能超过93天")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT task_id, name, subject, reward FROM tasks WHERE deleted_at IS NULL ORDER BY sort_weight DESC")
+        task_rows = cursor.fetchall()
+
+        cursor.execute(
+            "SELECT date, task_id, completed FROM daily_records WHERE date >= ? AND date <= ?",
+            (start.isoformat(), end.isoformat())
+        )
+        record_map = {(row["date"], row["task_id"]): bool(row["completed"]) for row in cursor.fetchall()}
+
     result = []
     d = start
     while d <= end:
-        records = get_records_for_date(d)
+        d_str = d.isoformat()
+        records = [
+            RecordOut(
+                date=d_str,
+                task_id=t["task_id"],
+                task_name=t["name"],
+                subject=t["subject"],
+                reward=t["reward"],
+                completed=record_map.get((d_str, t["task_id"]), False)
+            )
+            for t in task_rows
+        ]
         result.append(build_day_records(d, records))
         d += timedelta(days=1)
     return result
+
 
 
 @router.get("/week", response_model=WeekRecords)
@@ -90,8 +103,9 @@ def get_week_records(
     user: dict = Depends(get_current_user)
 ):
     """Get all 7 days records for the week containing the given date."""
-    monday = date - timedelta(days=date.weekday())
-    sunday = monday + timedelta(days=6)
+    monday = weeks.monday_of(date)
+    sunday = weeks.sunday_of(date)
+    week_str = weeks.iso_week_label(monday)
     week_start_str = monday.isoformat()
     week_end_str = (monday + timedelta(days=7)).isoformat()
 
@@ -111,7 +125,7 @@ def get_week_records(
     # Per-task weekly progress
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT task_id, name, subject, reward, weekly_min FROM tasks ORDER BY sort_weight DESC")
+        cursor.execute("SELECT task_id, name, subject, reward, weekly_min FROM tasks WHERE deleted_at IS NULL ORDER BY sort_weight DESC")
         all_tasks = cursor.fetchall()
         task_ids = [t["task_id"] for t in all_tasks]
         if task_ids:
@@ -141,6 +155,7 @@ def get_week_records(
         ))
 
     return WeekRecords(
+        week=week_str,
         week_start=monday,
         week_end=sunday,
         days=days,
@@ -150,20 +165,18 @@ def get_week_records(
     )
 
 
+
 @router.put("")
 def upsert_record(update: RecordUpdate, user: dict = Depends(get_current_user)):
-    """Update a single record. Child users can only update records within the last 3 days."""
-    if user["role"] == "child":
-        today = date.today()
-        three_days_ago = today - timedelta(days=config.EDITABLE_DAY_WINDOW - 1)
-        if update.date < three_days_ago or update.date > today:
-            raise HTTPException(
-                status_code=403,
-                detail="Child users can only update records from the last 3 days"
-            )
+    """Update a single record. Child users can only update records within the editable window."""
+    assert_editable_for_child(user["role"], update.date)
 
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM tasks WHERE task_id = ? AND deleted_at IS NULL", (update.task_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail=f"任务 '{update.task_id}' 不存在")
+
         cursor.execute("""
             INSERT INTO daily_records (date, task_id, completed, updated_at)
             VALUES (?, ?, ?, ?)
@@ -180,19 +193,22 @@ def upsert_records_batch(
     updates: List[RecordUpdate],
     user: dict = Depends(get_current_user)
 ):
-    """Batch update records. Child users can only update records within the last 3 days."""
-    if user["role"] == "child":
-        today = date.today()
-        three_days_ago = today - timedelta(days=config.EDITABLE_DAY_WINDOW - 1)
-        for update in updates:
-            if update.date < three_days_ago or update.date > today:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Child users can only update records from the last 3 days"
-                )
+    """Batch update records. Child users can only update records within the editable window."""
+    for update in updates:
+        assert_editable_for_child(user["role"], update.date)
+
 
     with get_db() as conn:
         cursor = conn.cursor()
+        task_ids = {u.task_id for u in updates}
+        if task_ids:
+            placeholders = ",".join("?" * len(task_ids))
+            cursor.execute(f"SELECT task_id FROM tasks WHERE task_id IN ({placeholders}) AND deleted_at IS NULL", list(task_ids))
+            existing_ids = {row["task_id"] for row in cursor.fetchall()}
+            missing = task_ids - existing_ids
+            if missing:
+                raise HTTPException(status_code=404, detail=f"任务不存在: {', '.join(sorted(missing))}")
+
         now = datetime.now().isoformat()
         for update in updates:
             cursor.execute("""
@@ -204,3 +220,4 @@ def upsert_records_batch(
             """, (update.date.isoformat(), update.task_id, update.completed, now))
         conn.commit()
     return {"message": f"Updated {len(updates)} records"}
+

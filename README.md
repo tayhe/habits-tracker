@@ -146,29 +146,36 @@ uv run pytest
 
 ## API 路由清单（`/api/v1`）
 
+### 系统配置与健康检查
+| 方法 | 路径 | 说明 | 权限 |
+|---|---|---|---|
+| `GET` | `/health` | 健康检查探针 | 公开 |
+| `GET` | `/api/v1/config` | 获取前端动态配置（如可编辑天数窗口等） | 公开 |
+
 ### 认证接口 (`/auth`)
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
-| `POST` | `/auth/login` | 用户登录并下发 HttpOnly Session Cookie | 公开 |
+| `POST` | `/auth/login` | 用户登录并下发 HttpOnly Session Cookie（带防暴力破解限速） | 公开 |
 | `POST` | `/auth/logout` | 注销并删除当前 Session | 登录用户 |
 | `GET` | `/auth/me` | 获取当前登录用户信息 | 登录用户 |
-| `PUT` | `/auth/password` | 修改当前用户密码（至少6位） | 登录用户 |
+| `PUT` | `/auth/password` | 修改当前用户密码（至少6位，旧 Session 全部吊销） | 登录用户 |
 
 ### 任务接口 (`/tasks`)
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
-| `GET` | `/tasks` | 获取所有任务定义清单 | 登录用户 |
+| `GET` | `/tasks` | 获取所有任务定义清单（仅展示未归档任务） | 登录用户 |
 | `POST` | `/tasks` | 创建自定义新任务 | 仅 parent |
-| `PUT` | `/tasks/{task_id}` | 修改任务属性（名称、单次收益、周最低等） | 仅 parent |
-| `DELETE` | `/tasks/{task_id}` | 删除任务定义 | 仅 parent |
+| `PUT` | `/tasks/{task_id}` | 修改任务属性（名称、科目、单次收益、周最低等） | 仅 parent |
+| `DELETE` | `/tasks/{task_id}` | 软删除/归档任务（历史打卡数据完整保留） | 仅 parent |
 
 ### 打卡记录 (`/records`)
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
-| `GET` | `/records/week?date=YYYY-MM-DD` | 获取指定日期所在整周7天的全部任务打卡矩阵 | 登录用户 |
+| `GET` | `/records/week?date=YYYY-MM-DD` | 获取指定日期所在整周7天的全部任务打卡矩阵（含标准 ISO week 标识） | 登录用户 |
 | `GET` | `/records?date=YYYY-MM-DD` | 获取指定单日的打卡列表 | 登录用户 |
-| `GET` | `/records/range?start=&end=` | 获取指定日期范围内的打卡记录 | 登录用户 |
+| `GET` | `/records/range?start=&end=` | 获取指定日期范围内的打卡记录（最大跨度 93 天） | 登录用户 |
 | `PUT` | `/records` | 更新单条任务打卡状态 | 登录用户（child 仅限最近7天） |
+| `PUT` | `/records/batch` | 批量更新任务打卡状态 | 登录用户（child 仅限最近7天） |
 
 ### 统计与兑现 (`/summary`)
 | 方法 | 路径 | 说明 | 权限 |
@@ -178,6 +185,7 @@ uv run pytest
 | `GET` | `/summary/multi-week?weeks=N` | 获取最近 N 周的历史趋势对比数据 | 登录用户 |
 | `GET` | `/summary/fulfillment?weeks=...` | 批量查询多周的爸爸兑现状态 | 登录用户 |
 | `PUT` | `/summary/fulfillment?week=...&fulfilled=...` | 勾选/取消指定周的爸爸兑现状态 | 仅 parent |
+
 
 ## 技术选型与项目结构
 

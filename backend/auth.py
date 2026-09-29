@@ -1,10 +1,12 @@
 import secrets
-import bcrypt
 from datetime import datetime, timedelta
-from fastapi import HTTPException, Cookie, Depends
 from typing import Optional
-from .database import get_db
+
+import bcrypt
+from fastapi import Cookie, Depends, HTTPException
+
 from . import config
+from .database import get_db
 
 
 def hash_password(password: str) -> str:

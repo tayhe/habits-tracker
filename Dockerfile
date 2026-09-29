@@ -3,6 +3,12 @@ FROM python:3.12-slim AS base
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Create non-root user matching host permissions
+ARG UID=1002
+ARG GID=1002
+RUN groupadd -g ${GID} appuser && useradd -m -u ${UID} -g appuser appuser
+
+
 # Set working directory
 WORKDIR /app
 
@@ -16,10 +22,18 @@ RUN uv sync --frozen --no-dev
 COPY backend/ backend/
 COPY frontend/ frontend/
 
+# Ensure permissions
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
 # Environment
 ENV PYTHONPATH=.
 ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 15000
 
-CMD ["uv", "run", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "15000"]
+CMD ["uv", "run", "--no-dev", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "15000"]
+
+

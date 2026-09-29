@@ -38,19 +38,27 @@ function getWeekStart(d) {
 }
 
 function getWeekStr(d) {
-  const weekStart = getWeekStart(d);
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  const yearStartMonday = getWeekStart(yearStart);
-  const weekNum = Math.ceil(((weekStart - yearStartMonday) / 86400000 + 1) / 7);
-  return `${d.getFullYear()}-W${pad(weekNum)}`;
+  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNr = (target.getUTCDay() + 6) % 7; // Monday = 0
+  target.setUTCDate(target.getUTCDate() - dayNr + 3); // Thursday in target week determines ISO week & year
+  const firstThursday = target.valueOf();
+  target.setUTCMonth(0, 1);
+  if (target.getUTCDay() !== 4) {
+    target.setUTCMonth(0, 1 + ((4 - target.getUTCDay()) + 7) % 7);
+  }
+  const weekNum = 1 + Math.ceil((firstThursday - target) / 604800000);
+  const year = new Date(firstThursday).getUTCFullYear();
+  return `${year}-W${pad(weekNum)}`;
 }
 
 function parseWeekStr(s) {
   const [y, w] = s.split('-W').map(Number);
   const jan4 = new Date(y, 0, 4);
-  const jan4Mon = getWeekStart(jan4);
-  return addDays(jan4Mon, (w - 1) * 7);
+  const jan4Day = (jan4.getDay() + 6) % 7;
+  const week1Mon = addDays(jan4, -jan4Day);
+  return addDays(week1Mon, (w - 1) * 7);
 }
+
 
 function formatWeekDisplay(weekStr, start) {
   const [year, w] = weekStr.split('-W');
@@ -117,6 +125,10 @@ const app = createApp({
         const resp = await fetch(API + path, opts);
         if (resp.status === 401) {
           currentUser.value = null;
+          if (path.startsWith('/auth/login')) {
+            const err = await resp.json().catch(() => ({}));
+            showToast(err.detail || '用户名或密码错误');
+          }
           return null;
         }
         if (!resp.ok) {

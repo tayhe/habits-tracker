@@ -1,20 +1,21 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
 from datetime import date, timedelta
-from ..models import DayRecords, WeekEarn
-from ..database import get_db
-from .records import get_records_for_date, build_day_records, progress_emoji
-from ..auth import get_current_user
-from .. import config
 from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from .. import config, weeks
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import DayRecords, WeekEarn
+from ..rules import progress_emoji
+from .records import build_day_records, get_records_for_date
 
 router = APIRouter(prefix="/summary", tags=["summary"])
 
 
 def get_iso_week_range(d: date) -> tuple[date, date]:
     """Return (monday, sunday) of the ISO week containing date d."""
-    monday = d - timedelta(days=d.weekday())
-    sunday = monday + timedelta(days=6)
-    return monday, sunday
+    return weeks.monday_of(d), weeks.sunday_of(d)
 
 
 @router.get("/daily", response_model=DayRecords)
@@ -26,17 +27,7 @@ def daily_summary(d: date = Query(..., alias="date"), user: dict = Depends(get_c
 @router.get("/weekly")
 def weekly_summary(week: str = Query(...), user: dict = Depends(get_current_user)):
     """week format: YYYY-WXX, e.g. 2026-W21"""
-    try:
-        year, week_part = week.split("-W")
-        year = int(year)
-        week_num = int(week_part)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid week format, use YYYY-WXX")
-
-    # Get Monday of that ISO week
-    jan4 = date(year, 1, 4)
-    monday = jan4 - timedelta(days=jan4.weekday()) + timedelta(weeks=week_num - 1)
-    sunday = monday + timedelta(days=6)
+    monday, sunday = weeks.parse_week_label(week)
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -135,7 +126,7 @@ def get_week_earn(
 ):
     """Get the cumulative earnings for the week containing the given date."""
     monday, sunday = get_iso_week_range(date)
-    week_str = f"{date.year}-W{date.isocalendar()[1]:02d}"
+    week_str = weeks.iso_week_label(monday)
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -162,29 +153,28 @@ def get_week_earn(
 
 @router.get("/multi-week")
 def multi_week_summary(
-    weeks: int = Query(8, ge=1, le=26),
+    weeks_count: int = Query(8, alias="weeks", ge=1, le=26),
     user: dict = Depends(get_current_user)
 ):
     """Return summary for the last N weeks for trend comparison."""
     today = date.today()
     current_week_start = today - timedelta(days=today.weekday())
 
-    results = []
-    for i in range(weeks):
-        offset = i * 7
-        week_monday = current_week_start - timedelta(days=offset)
-        week_sunday = week_monday + timedelta(days=6)
-        week_str = f"{week_monday.year}-W{week_monday.isocalendar()[1]:02d}"
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT task_id, name, subject, reward, weekly_min FROM tasks WHERE deleted_at IS NULL")
+        tasks = {row["task_id"]: dict(row) for row in cursor.fetchall()}
+        all_task_ids = list(tasks.keys())
 
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT task_id, name, subject, reward, weekly_min FROM tasks")
-            tasks = {row["task_id"]: dict(row) for row in cursor.fetchall()}
+        results = []
+        for i in range(weeks_count):
+            offset = i * 7
+            week_monday = current_week_start - timedelta(days=offset)
+            week_str = weeks.iso_week_label(week_monday)
 
             week_start_str = week_monday.isoformat()
             week_end_str = (week_monday + timedelta(days=7)).isoformat()
 
-            all_task_ids = list(tasks.keys())
             tasks_met = 0
             total_tasks = len(all_task_ids)
             total_reward = 0.0
@@ -202,32 +192,35 @@ def multi_week_summary(
 
                 for t in tasks.values():
                     subject = t["subject"]
-                    subject_data[subject]["total_tasks"] += 1
+                    if subject in subject_data:
+                        subject_data[subject]["total_tasks"] += 1
                     cnt = completion_counts.get(t["task_id"], 0)
                     if cnt >= t["weekly_min"]:
                         tasks_met += 1
-                        subject_data[subject]["tasks_met"] += 1
+                        if subject in subject_data:
+                            subject_data[subject]["tasks_met"] += 1
                         total_reward += t["reward"] * cnt
 
-        rate = tasks_met / total_tasks if total_tasks > 0 else 0
-        results.append({
-            "week": week_str,
-            "week_start": week_monday.isoformat(),
-            "tasks_met": tasks_met,
-            "total_tasks": total_tasks,
-            "rate": round(rate, 2),
-            "total_reward": round(total_reward, 2),
-            "emoji": progress_emoji(tasks_met, total_tasks),
-            "subjects": {
-                s: {
-                    "tasks_met": subject_data[s]["tasks_met"],
-                    "total_tasks": subject_data[s]["total_tasks"],
-                } for s in config.SUBJECTS
-            },
-        })
+            rate = tasks_met / total_tasks if total_tasks > 0 else 0
+            results.append({
+                "week": week_str,
+                "week_start": week_monday.isoformat(),
+                "tasks_met": tasks_met,
+                "total_tasks": total_tasks,
+                "rate": round(rate, 2),
+                "total_reward": round(total_reward, 2),
+                "emoji": progress_emoji(tasks_met, total_tasks),
+                "subjects": {
+                    s: {
+                        "tasks_met": subject_data[s]["tasks_met"],
+                        "total_tasks": subject_data[s]["total_tasks"],
+                    } for s in config.SUBJECTS
+                },
+            })
 
     results.reverse()  # oldest first
     return results
+
 
 
 @router.get("/fulfillment")

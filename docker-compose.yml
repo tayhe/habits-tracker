@@ -1,7 +1,19 @@
 services:
   habits-tracker:
-    build: .
-    network_mode: host
+    build:
+      context: .
+      args:
+        UID: 1002
+        GID: 1002
+
+    ports:
+      - "15000:15000"
     volumes:
       - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:15000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
+

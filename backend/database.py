@@ -1,8 +1,8 @@
-import sqlite3
 import shutil
+import sqlite3
 import subprocess
-from datetime import datetime
 from contextlib import contextmanager
+from datetime import datetime
 
 from . import config
 
@@ -10,10 +10,11 @@ DB_PATH = config.DB_PATH
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
 
@@ -48,14 +49,22 @@ def backup_database_if_needed():
         to_remove = backups[:-config.MAX_BACKUPS]
         trash_cmd = shutil.which("trash-put")
         for old_file in to_remove:
-            try:
-                if trash_cmd:
-                    subprocess.run([trash_cmd, str(old_file)], check=True)
-                else:
+            removed = False
+            if trash_cmd:
+                try:
+                    subprocess.run([trash_cmd, str(old_file)], check=True, capture_output=True)
+                    removed = True
+                except Exception:
+                    pass
+            if not removed:
+                try:
                     old_file.unlink(missing_ok=True)
+                    removed = True
+                except Exception as e:
+                    print(f"[Backup] Failed to remove {old_file.name}: {e}")
+            if removed:
                 print(f"[Backup] Pruned old backup: {old_file.name}")
-            except Exception as e:
-                print(f"[Backup] Failed to remove {old_file.name}: {e}")
+
 
     return backup_file if created else None
 
@@ -65,8 +74,13 @@ def get_db():
     conn = get_connection()
     try:
         yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
+
 
 
 def init_db():
@@ -95,6 +109,7 @@ def init_db():
             reward REAL NOT NULL DEFAULT 0,
             weekly_min INTEGER NOT NULL DEFAULT 1,
             sort_weight INTEGER NOT NULL DEFAULT 0,
+            deleted_at DATETIME DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -135,7 +150,6 @@ def init_db():
     """)
 
     # Indexes for query performance
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_records_date_task ON daily_records(date, task_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
 
@@ -183,11 +197,18 @@ def init_db():
         )
         conn.commit()
 
-    # Schema versioning
+    # Schema versioning & migrations
     cursor.execute("PRAGMA user_version")
     current_version = cursor.fetchone()[0]
-    if current_version == 0:
+    if current_version < 1:
         cursor.execute("PRAGMA user_version = 1")
+        conn.commit()
+    if current_version < 2:
+        cursor.execute("PRAGMA table_info(tasks)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "deleted_at" not in columns:
+            cursor.execute("ALTER TABLE tasks ADD COLUMN deleted_at DATETIME DEFAULT NULL")
+        cursor.execute("PRAGMA user_version = 2")
         conn.commit()
 
     conn.close()
