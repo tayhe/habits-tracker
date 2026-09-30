@@ -1,0 +1,32 @@
+# Install with:  uv tool install pre-commit  (or: pip install pre-commit)
+# Enable once:   pre-commit install
+# Run all hooks: pre-commit run --all-files
+#
+# All hooks are `language: system` so they reuse the project's own
+# .venv binaries instead of downloading pinned upstream repos.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check
+        entry: bash -c 'if [ -x .venv/bin/ruff ]; then .venv/bin/ruff check .; else ruff check .; fi'
+        language: system
+        pass_filenames: false
+
+      - id: parity
+        name: frontend/backend parity (ISO week + emoji)
+        entry: ./scripts/parity_check.sh
+        language: system
+        pass_filenames: false
+
+      - id: bare-dates
+        name: no raw date.today()/datetime.now() outside clock.py
+        entry: ./scripts/check_bare_dates.sh
+        language: system
+        pass_filenames: false
+
+      - id: frontend
+        name: frontend syntax + unit checks
+        entry: ./scripts/check_frontend.sh
+        language: system
+        pass_filenames: false
