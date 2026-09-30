@@ -17,16 +17,20 @@ def test_reward_qualification_calculation():
 
 
 def test_child_editable_window_rule():
-    """Test assert_editable_for_child raises 403 when outside window."""
+    """Test assert_editable raises 403 when outside window."""
     today = date.today()
     # Child within window (6 days ago) -> no exception
-    rules.assert_editable_for_child("child", today - timedelta(days=6), window_days=7)
+    rules.assert_editable("child", today - timedelta(days=6), window_days=7)
     # Child outside window (7 days ago) -> 403
     with pytest.raises(HTTPException) as exc:
-        rules.assert_editable_for_child("child", today - timedelta(days=7), window_days=7)
+        rules.assert_editable("child", today - timedelta(days=7), window_days=7)
     assert exc.value.status_code == 403
-    # Parent always allowed
-    rules.assert_editable_for_child("parent", today - timedelta(days=30), window_days=7)
+    # Parent always allowed for past dates
+    rules.assert_editable("parent", today - timedelta(days=30), window_days=7)
+    # Nobody (parent included) may punch a future date
+    with pytest.raises(HTTPException) as exc:
+        rules.assert_editable("parent", today + timedelta(days=1), window_days=7)
+    assert exc.value.status_code == 400
 
 
 def test_iso_week_range_calculation():

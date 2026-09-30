@@ -1,9 +1,9 @@
 import sqlite3
-from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from .. import clock, repo
 from ..auth import get_current_user, require_parent
 from ..database import get_db
 from ..models import TaskCreate, TaskOut, TaskUpdate
@@ -13,9 +13,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 def get_all_tasks():
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY sort_weight DESC")
-        return [dict(row) for row in cursor.fetchall()]
+        return [dict(row) for row in repo.get_active_tasks(conn)]
 
 
 @router.get("", response_model=List[TaskOut])
@@ -86,7 +84,7 @@ def update_task(task_id: str, task: TaskUpdate, user: dict = Depends(require_par
 def delete_task(task_id: str, user: dict = Depends(require_parent)):
     with get_db() as conn:
         cursor = conn.cursor()
-        now = datetime.now().isoformat()
+        now = clock.now().isoformat()
         cursor.execute("UPDATE tasks SET deleted_at = ? WHERE task_id = ? AND deleted_at IS NULL", (now, task_id))
         conn.commit()
         if cursor.rowcount == 0:

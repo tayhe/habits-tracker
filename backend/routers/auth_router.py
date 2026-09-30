@@ -1,5 +1,4 @@
 import time
-from collections import defaultdict
 from typing import Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
@@ -10,32 +9,75 @@ from ..models import ChangePasswordRequest, LoginRequest, LoginResponse, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-_login_attempts = defaultdict(list)
+class BoundedRateLimiter:
+    """In-memory rate limiter with bounded keys and dual IP/User limits.
+
+    Assumes single-process deployment.
+    """
+
+    def __init__(
+        self,
+        max_keys: int = 1000,
+        window_seconds: int = 60,
+        max_ip_attempts: int = 30,
+        max_pair_attempts: int = 5,
+    ):
+        self.max_keys = max_keys
+        self.window_seconds = window_seconds
+        self.max_ip_attempts = max_ip_attempts
+        self.max_pair_attempts = max_pair_attempts
+        self._attempts: dict[str, list[float]] = {}
+
+    def _prune(self, now: float) -> None:
+        expired = [
+            k for k, times in self._attempts.items()
+            if not times or now - times[-1] >= self.window_seconds
+        ]
+        for k in expired:
+            del self._attempts[k]
+        if len(self._attempts) > self.max_keys:
+            excess = len(self._attempts) - self.max_keys
+            for k in list(self._attempts.keys())[:excess]:
+                del self._attempts[k]
+
+    def check(self, ip: str, username: str) -> None:
+        now = time.time()
+        self._prune(now)
+
+        ip_times = [t for t in self._attempts.get(f"ip:{ip}", []) if now - t < self.window_seconds]
+        if len(ip_times) >= self.max_ip_attempts:
+            raise HTTPException(status_code=429, detail="登录尝试过多，请在 1 分钟后重试")
+
+        pair_times = [
+            t for t in self._attempts.get(f"pair:{ip}:{username}", [])
+            if now - t < self.window_seconds
+        ]
+        if len(pair_times) >= self.max_pair_attempts:
+            raise HTTPException(status_code=429, detail="登录尝试过多，请在 1 分钟后重试")
+
+    def record_failure(self, ip: str, username: str) -> None:
+        now = time.time()
+        self._attempts.setdefault(f"ip:{ip}", []).append(now)
+        self._attempts.setdefault(f"pair:{ip}:{username}", []).append(now)
+
+    def record_success(self, ip: str, username: str) -> None:
+        self._attempts.pop(f"pair:{ip}:{username}", None)
 
 
-def _check_rate_limit(key: str, max_attempts: int = 5, window_seconds: int = 60):
-    now = time.time()
-    attempts = [t for t in _login_attempts[key] if now - t < window_seconds]
-    _login_attempts[key] = attempts
-    if len(attempts) >= max_attempts:
-        raise HTTPException(
-            status_code=429,
-            detail="登录尝试过多，请在 1 分钟后重试"
-        )
+limiter = BoundedRateLimiter()
 
 
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest, response: Response, req: Request):
     client_ip = req.client.host if req.client else "unknown"
-    limit_key = f"{client_ip}:{request.username}"
-    _check_rate_limit(limit_key)
+    limiter.check(client_ip, request.username)
 
     user = auth.authenticate_user(request.username, request.password)
     if not user:
-        _login_attempts[limit_key].append(time.time())
+        limiter.record_failure(client_ip, request.username)
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    _login_attempts.pop(limit_key, None)
+    limiter.record_success(client_ip, request.username)
     token = auth.create_session(user["id"])
     response.set_cookie(
         key="session_token",

@@ -8,6 +8,8 @@ services:
 
     ports:
       - "15000:15000"
+    environment:
+      - TZ=Asia/Shanghai
     volumes:
       - ./data:/app/data
     healthcheck:

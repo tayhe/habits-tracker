@@ -3,6 +3,9 @@ FROM python:3.12-slim AS base
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Install tzdata for container timezone support
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user matching host permissions
 ARG UID=1002
 ARG GID=1002
@@ -29,6 +32,7 @@ RUN mkdir -p /app/data && chown -R appuser:appuser /app
 USER appuser
 
 # Environment
+ENV TZ=Asia/Shanghai
 ENV PYTHONPATH=.
 ENV PYTHONDONTWRITEBYTECODE=1
 

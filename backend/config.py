@@ -15,3 +15,26 @@ MAX_BACKUPS = int(os.getenv("MAX_BACKUPS", 3))
 COOKIE_MAX_AGE = int(os.getenv("COOKIE_MAX_AGE", 60 * 60 * 24 * 30))
 EDITABLE_DAY_WINDOW = int(os.getenv("EDITABLE_DAY_WINDOW", 7))
 SUBJECTS = ["英语", "数学", "语文"]
+
+# --- Initial credentials (seeded only when the users table is empty) ---
+# Always override in production: INITIAL_PARENT_PASSWORD=... docker compose up -d
+INITIAL_PARENT_USERNAME = os.getenv("INITIAL_PARENT_USERNAME", "tayhe")
+INITIAL_PARENT_PASSWORD = os.getenv("INITIAL_PARENT_PASSWORD", "parents")
+INITIAL_CHILD_USERNAME = os.getenv("INITIAL_CHILD_USERNAME", "meow")
+INITIAL_CHILD_PASSWORD = os.getenv("INITIAL_CHILD_PASSWORD", "child")
+
+
+def _env_flag(name: str, default: str = "0") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+# --- API surface hardening ---
+# Interactive API docs are off by default; set ENABLE_DOCS=1 for local development.
+ENABLE_DOCS = _env_flag("ENABLE_DOCS")
+# Cross-origin access is off by default because the SPA is served same-origin.
+# Set CORS_ORIGINS="https://a.example,https://b.example" only if you split the frontend.
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+
+# --- Background maintenance ---
+# Backup / session cleanup runs at this hour (Asia/Shanghai) every day.
+MAINTENANCE_HOUR = int(os.getenv("MAINTENANCE_HOUR", 3))

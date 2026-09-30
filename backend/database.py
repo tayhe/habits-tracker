@@ -1,16 +1,19 @@
+import logging
 import shutil
 import sqlite3
 import subprocess
 from contextlib import contextmanager
-from datetime import datetime
 
-from . import config
+from . import clock, config
 
-DB_PATH = config.DB_PATH
+logger = logging.getLogger("habits.database")
+
+# Current schema version, also stored in `PRAGMA user_version`.
+SCHEMA_VERSION = 3
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30.0)
+    conn = sqlite3.connect(config.DB_PATH, check_same_thread=False, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
@@ -20,11 +23,11 @@ def get_connection():
 
 def backup_database_if_needed():
     """Backup database weekly and retain at most MAX_BACKUPS (oldest deleted)."""
-    if not DB_PATH.exists():
+    if not config.DB_PATH.exists():
         return None
 
     config.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    now = datetime.now()
+    now = clock.now()
     iso_year, iso_week, _ = now.isocalendar()
     backup_name = f"habits_{iso_year}_w{iso_week:02d}.db"
     backup_file = config.BACKUP_DIR / backup_name
@@ -37,7 +40,7 @@ def backup_database_if_needed():
             try:
                 source_conn.backup(dest_conn)
                 created = True
-                print(f"[Backup] Created weekly backup: {backup_file.name}")
+                logger.info("Created weekly backup: %s", backup_file.name)
             finally:
                 dest_conn.close()
         finally:
@@ -45,8 +48,8 @@ def backup_database_if_needed():
 
     # Prune older backups, keeping only the most recent MAX_BACKUPS
     backups = sorted(config.BACKUP_DIR.glob("habits_*_w*.db"), key=lambda p: p.name)
-    if len(backups) > config.MAX_BACKUPS:
-        to_remove = backups[:-config.MAX_BACKUPS]
+    if backups and len(backups) > config.MAX_BACKUPS:
+        to_remove = backups[:-config.MAX_BACKUPS] if config.MAX_BACKUPS > 0 else backups
         trash_cmd = shutil.which("trash-put")
         for old_file in to_remove:
             removed = False
@@ -60,11 +63,10 @@ def backup_database_if_needed():
                 try:
                     old_file.unlink(missing_ok=True)
                     removed = True
-                except Exception as e:
-                    print(f"[Backup] Failed to remove {old_file.name}: {e}")
+                except Exception:
+                    logger.exception("Failed to remove %s", old_file.name)
             if removed:
-                print(f"[Backup] Pruned old backup: {old_file.name}")
-
+                logger.info("Pruned old backup: %s", old_file.name)
 
     return backup_file if created else None
 
@@ -83,11 +85,8 @@ def get_db():
 
 
 
-def init_db():
-    """Initialize database tables and seed data."""
-    conn = get_connection()
-    cursor = conn.cursor()
-
+def _create_schema(cursor):
+    """Create tables and indexes if they do not exist (idempotent baseline)."""
     # Users table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -150,28 +149,75 @@ def init_db():
     """)
 
     # Indexes for query performance
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_records_date_task ON daily_records(date, task_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
 
-    conn.commit()
 
-    # Seed users if not exist
+# --- Schema migrations -------------------------------------------------------
+# Each entry upgrades the schema FROM version N-1 TO version N.
+# Add a new entry (and bump SCHEMA_VERSION) for every schema change; never edit
+# an already-shipped migration. All migrations run in one transaction, before
+# seeding, and are idempotent because they are only executed when user_version
+# is behind.
+
+def _migrate_to_v2(cursor):
+    """v1 -> v2: soft delete / archive support for tasks."""
+    cursor.execute("PRAGMA table_info(tasks)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "deleted_at" not in columns:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN deleted_at DATETIME DEFAULT NULL")
+
+
+def _migrate_to_v3(cursor):
+    """v2 -> v3: restore daily_records(date, task_id) index (dropped in 2a643d1)."""
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_records_date_task ON daily_records(date, task_id)")
+
+
+MIGRATIONS = {
+    2: _migrate_to_v2,
+    3: _migrate_to_v3,
+}
+
+
+def _run_migrations(conn, cursor) -> None:
+    cursor.execute("PRAGMA user_version")
+    current = cursor.fetchone()[0]
+    if current >= SCHEMA_VERSION:
+        return
+    for version in range(current + 1, SCHEMA_VERSION + 1):
+        migrate = MIGRATIONS.get(version)
+        if migrate is not None:
+            migrate(cursor)
+        # PRAGMA cannot be parameterized; `version` is an int from range().
+        cursor.execute(f"PRAGMA user_version = {version}")
+        conn.commit()
+        logger.info("Schema migrated to version %d", version)
+
+
+def _seed_initial_data(conn, cursor) -> None:
+    """Seed default users and tasks, only when the tables are empty."""
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
         import bcrypt
-        parent_hash = bcrypt.hashpw("parents".encode(), bcrypt.gensalt()).decode()
-        cursor.execute(
-            "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-            ("tayhe", parent_hash, "parent")
-        )
-        child_hash = bcrypt.hashpw("child".encode(), bcrypt.gensalt()).decode()
-        cursor.execute(
-            "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-            ("meow", child_hash, "child")
-        )
-        conn.commit()
 
-    # Seed tasks if not exist
+        users = [
+            (config.INITIAL_PARENT_USERNAME, config.INITIAL_PARENT_PASSWORD, "parent"),
+            (config.INITIAL_CHILD_USERNAME, config.INITIAL_CHILD_PASSWORD, "child"),
+        ]
+        for username, password, role in users:
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            cursor.execute(
+                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                (username, password_hash, role),
+            )
+        conn.commit()
+        if config.INITIAL_PARENT_PASSWORD == "parents" or config.INITIAL_CHILD_PASSWORD == "child":
+            logger.warning(
+                "Seeded default credentials; override INITIAL_PARENT_PASSWORD / "
+                "INITIAL_CHILD_PASSWORD before exposing this service."
+            )
+
     cursor.execute("SELECT COUNT(*) FROM tasks")
     if cursor.fetchone()[0] == 0:
         initial_tasks = [
@@ -193,26 +239,23 @@ def init_db():
         ]
         cursor.executemany(
             "INSERT INTO tasks (task_id, subject, name, reward, weekly_min, sort_weight) VALUES (?, ?, ?, ?, ?, ?)",
-            initial_tasks
+            initial_tasks,
         )
         conn.commit()
 
-    # Schema versioning & migrations
-    cursor.execute("PRAGMA user_version")
-    current_version = cursor.fetchone()[0]
-    if current_version < 1:
-        cursor.execute("PRAGMA user_version = 1")
-        conn.commit()
-    if current_version < 2:
-        cursor.execute("PRAGMA table_info(tasks)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if "deleted_at" not in columns:
-            cursor.execute("ALTER TABLE tasks ADD COLUMN deleted_at DATETIME DEFAULT NULL")
-        cursor.execute("PRAGMA user_version = 2")
-        conn.commit()
 
-    conn.close()
-    print(f"Database initialized at {DB_PATH}")
+def init_db():
+    """Create schema, run pending migrations, then seed data."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        _create_schema(cursor)
+        conn.commit()
+        _run_migrations(conn, cursor)
+        _seed_initial_data(conn, cursor)
+    finally:
+        conn.close()
+    logger.info("Database initialized at %s", config.DB_PATH)
 
 
 if __name__ == "__main__":

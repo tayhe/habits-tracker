@@ -1,12 +1,15 @@
+import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
 from fastapi import Cookie, Depends, HTTPException
 
-from . import config
+from . import clock, config
 from .database import get_db
+
+logger = logging.getLogger("habits.auth")
 
 
 def hash_password(password: str) -> str:
@@ -38,7 +41,7 @@ def create_session(user_id: int) -> str:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)",
-            (token, user_id, datetime.now().isoformat())
+            (token, user_id, clock.now_utc().isoformat()),
         )
         conn.commit()
     return token
@@ -58,7 +61,9 @@ def validate_session(token: str) -> dict | None:
             return None
         # Check session expiration
         created_at = datetime.fromisoformat(row["created_at"])
-        if datetime.now() - created_at > timedelta(seconds=config.COOKIE_MAX_AGE):
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        if clock.now_utc() - created_at > timedelta(seconds=config.COOKIE_MAX_AGE):
             cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
             conn.commit()
             return None
@@ -73,18 +78,23 @@ def delete_session(token: str):
 
 
 def cleanup_expired_sessions():
-    """Delete all sessions older than COOKIE_MAX_AGE."""
-    cutoff = datetime.now() - timedelta(seconds=config.COOKIE_MAX_AGE)
+    """Delete all sessions older than COOKIE_MAX_AGE.
+
+    `julianday()` is used instead of string comparison so that legacy naive
+    timestamps (`2026-09-30T12:00:00`) and new UTC ones
+    (`2026-09-30T04:30:00+00:00`) are compared as instants, not as text.
+    """
+    cutoff = clock.now_utc() - timedelta(seconds=config.COOKIE_MAX_AGE)
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "DELETE FROM sessions WHERE created_at < ?",
-            (cutoff.isoformat(),)
+            "DELETE FROM sessions WHERE julianday(created_at) < julianday(?)",
+            (cutoff.isoformat(),),
         )
         deleted = cursor.rowcount
         conn.commit()
     if deleted > 0:
-        print(f"[Auth] Cleaned up {deleted} expired session(s)")
+        logger.info("Cleaned up %d expired session(s)", deleted)
     return deleted
 
 
