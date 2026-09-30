@@ -1,98 +1,28 @@
 import { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick } from './vendor/vue.esm-browser.prod.js';
 
+// Pure helpers live in ./lib so that scripts/parity_check.mjs can import the
+// exact implementation the browser runs and diff it against the Python side
+// (backend/weeks.py / backend/rules.py).
+import {
+  formatDate, parseDateLocal, addDays, isSameDay, getWeekStart,
+  formatWeekDisplay, getDayName, formatMD,
+} from './lib/dates.js';
+import { getWeekStr, parseWeekStr } from './lib/iso-week.js';
+import { progressEmoji, progressBar } from './lib/progress.js';
+import { humanDetail } from './lib/errors.js';
+
 const API = '/api/v1';
 
-// Subject configurations
+// Subject configurations (presentation only; the *list* of subjects comes from
+// GET /config so backend and frontend cannot drift apart).
 const SUBJECT_INFO = {
   '英语': { class: 'english', emoji: '🔤', color: '#2563EB' },
   '数学': { class: 'math', emoji: '🧮', color: '#D97706' },
   '语文': { class: 'chinese', emoji: '📝', color: '#059669' }
 };
 
-// Date helper utilities
-function pad(n) {
-  return String(n).padStart(2, '0');
-}
-
-function formatDate(d) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function addDays(d, n) {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
-function isSameDay(a, b) {
-  if (!a || !b) return false;
-  return a.getFullYear() === b.getFullYear() &&
-         a.getMonth() === b.getMonth() &&
-         a.getDate() === b.getDate();
-}
-
-function getWeekStart(d) {
-  const date = new Date(d);
-  const day = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  return addDays(date, day === 0 ? -6 : 1 - day); // Monday (ISO week start)
-}
-
-function getWeekStr(d) {
-  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNr = (target.getUTCDay() + 6) % 7; // Monday = 0
-  target.setUTCDate(target.getUTCDate() - dayNr + 3); // Thursday in target week determines ISO week & year
-  const firstThursday = target.valueOf();
-  target.setUTCMonth(0, 1);
-  if (target.getUTCDay() !== 4) {
-    target.setUTCMonth(0, 1 + ((4 - target.getUTCDay()) + 7) % 7);
-  }
-  const weekNum = 1 + Math.ceil((firstThursday - target) / 604800000);
-  const year = new Date(firstThursday).getUTCFullYear();
-  return `${year}-W${pad(weekNum)}`;
-}
-
-function parseWeekStr(s) {
-  const [y, w] = s.split('-W').map(Number);
-  const jan4 = new Date(y, 0, 4);
-  const jan4Day = (jan4.getDay() + 6) % 7;
-  const week1Mon = addDays(jan4, -jan4Day);
-  return addDays(week1Mon, (w - 1) * 7);
-}
-
-
-function formatWeekDisplay(weekStr, start) {
-  const [year, w] = weekStr.split('-W');
-  const end = addDays(start, 6);
-  const fmt = d => `${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${year}年第${parseInt(w, 10)}周（${fmt(start)}-${fmt(end)}）`;
-}
-
-function getDayName(d) {
-  const names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  return names[d.getDay()];
-}
-
-function formatMD(d) {
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-function progressEmoji(completed, total) {
-  if (total === 0) return '😿';
-  const rate = completed / total;
-  if (rate >= 1.0) return '😺🎉';
-  if (rate >= 0.75) return '😺';
-  if (rate >= 0.5) return '😸';
-  if (rate >= 0.25) return '😼';
-  if (rate > 0) return '😾';
-  return '😿';
-}
-
-function progressBar(completed, total, maxLen = 15) {
-  if (total === 0) return '░'.repeat(Math.min(4, maxLen));
-  const len = Math.min(total, maxLen);
-  const filled = Math.round((completed / total) * len);
-  return '▓'.repeat(filled) + '░'.repeat(len - filled);
-}
+const DEFAULT_SUBJECTS = Object.keys(SUBJECT_INFO);
+const SUBJECT_FALLBACK = { class: 'other', emoji: '📌', color: '#6B7280' };
 
 // Main Vue Application
 const app = createApp({
@@ -100,7 +30,23 @@ const app = createApp({
     // Global state
     const currentUser = ref(null);
     const currentView = ref('daily');
-    const config = ref({ editable_day_window: 7 });
+    const config = ref({ editable_day_window: 7, subjects: [] });
+
+    // Canonical subject order/list comes from GET /config (backend owns it).
+    // SUBJECT_INFO keys are only the offline fallback for styling.
+    const subjectList = computed(() => (
+      Array.isArray(config.value.subjects) && config.value.subjects.length
+        ? config.value.subjects
+        : DEFAULT_SUBJECTS
+    ));
+    const weeklySubjects = computed(() => [...subjectList.value, '总计']);
+
+    // Make sure every server-side subject has presentation styles.
+    function ensureSubjectStyles(subjects) {
+      (subjects || []).forEach(s => {
+        if (!(s in SUBJECT_INFO)) SUBJECT_INFO[s] = SUBJECT_FALLBACK;
+      });
+    }
 
     // Toast
     const toast = reactive({ show: false, message: '', timer: null });
@@ -127,13 +73,18 @@ const app = createApp({
           currentUser.value = null;
           if (path.startsWith('/auth/login')) {
             const err = await resp.json().catch(() => ({}));
-            showToast(err.detail || '用户名或密码错误');
+            showToast(humanDetail(err.detail) || '用户名或密码错误');
           }
+          return null;
+        }
+        if (resp.status === 429) {
+          const err = await resp.json().catch(() => ({}));
+          showToast(humanDetail(err.detail) || '尝试次数过多，请稍后再试');
           return null;
         }
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}));
-          showToast(err.detail || '请求失败');
+          showToast(humanDetail(err.detail) || `请求失败 (${resp.status})`);
           return null;
         }
         const text = await resp.text();
@@ -230,8 +181,7 @@ const app = createApp({
     });
 
     const ambitionBySubject = computed(() => {
-      const subjects = ['英语', '数学', '语文'];
-      return subjects.map(subject => {
+      return subjectList.value.map(subject => {
         const info = SUBJECT_INFO[subject];
         const tasks = ambitionTasks.value.filter(t => t.subject === subject);
         let subjectMaxReward = 0;
@@ -255,7 +205,8 @@ const app = createApp({
     });
 
     const dailySubjectTasks = computed(() => {
-      const map = { '英语': [], '数学': [], '语文': [] };
+      const map = {};
+      subjectList.value.forEach(subject => { map[subject] = []; });
       if (weekData.value && weekData.value.days && weekData.value.days.length > 0) {
         weekData.value.days[0].records.forEach(rec => {
           if (map[rec.subject]) {
@@ -280,7 +231,7 @@ const app = createApp({
         d.setHours(0, 0, 0, 0);
         const dateStr = formatDate(d);
         const isToday = isSameDay(d, today);
-        const isEditable = currentUser.value?.role === 'parent' || (d >= threeDaysAgo && d <= today);
+        const isEditable = (currentUser.value?.role === 'parent' || d >= threeDaysAgo) && d <= today;
         const isHistory = currentUser.value?.role !== 'parent' && d < threeDaysAgo;
         const dayData = weekData.value?.days ? weekData.value.days[i] : null;
 
@@ -304,7 +255,7 @@ const app = createApp({
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayData = weekData.value.days.find(d => {
-        const dDate = new Date(d.date);
+        const dDate = parseDateLocal(d.date);
         dDate.setHours(0, 0, 0, 0);
         return isSameDay(dDate, today);
       });
@@ -474,7 +425,7 @@ const app = createApp({
     });
 
     function formatTrendWeek(w) {
-      const weekStart = new Date(w.week_start);
+      const weekStart = parseDateLocal(w.week_start);
       const weekEnd = addDays(weekStart, 6);
       const weekNum = parseInt(w.week.split('-W')[1], 10);
       return `${weekStart.getFullYear()}年第${weekNum}周（${weekStart.getMonth() + 1}月${weekStart.getDate()}日-${weekEnd.getMonth() + 1}月${weekEnd.getDate()}日）`;
@@ -509,11 +460,21 @@ const app = createApp({
     }
 
     async function saveTask(task) {
+      const reward = parseFloat(task.reward);
+      const weeklyMin = parseInt(task.weekly_min, 10);
+      if (!Number.isFinite(reward) || reward < 0) {
+        showToast('单次收益必须是大于或等于 0 的有效数字');
+        return;
+      }
+      if (!Number.isInteger(weeklyMin) || weeklyMin < 1) {
+        showToast('周最低次数必须是大于或等于 1 的整数');
+        return;
+      }
       const update = {
         name: task.name,
         subject: task.subject,
-        reward: parseFloat(task.reward),
-        weekly_min: parseInt(task.weekly_min, 10)
+        reward: reward,
+        weekly_min: weeklyMin
       };
       const resp = await api('PUT', `/tasks/${task.task_id}`, update);
       if (resp) showToast('保存成功');
@@ -531,9 +492,10 @@ const app = createApp({
     async function addTask() {
       const name = prompt('任务名称：');
       if (!name) return;
-      const subject = prompt('科目（英语/数学/语文）：');
-      if (!['英语', '数学', '语文'].includes(subject)) {
-        showToast('科目无效');
+      const subjects = subjectList.value;
+      const subject = prompt(`科目（${subjects.join('/')}）：`);
+      if (!subjects.includes(subject)) {
+        showToast(`科目无效，必须是 ${subjects.join('、')} 之一`);
         return;
       }
       const reward = parseFloat(prompt('单次收益：') || '0.1');
@@ -562,7 +524,10 @@ const app = createApp({
     onMounted(async () => {
       document.addEventListener('click', onDocClick);
       const cfg = await api('GET', '/config');
-      if (cfg) config.value = cfg;
+      if (cfg) {
+        config.value = cfg;
+        ensureSubjectStyles(cfg.subjects);
+      }
       const me = await api('GET', '/auth/me');
       if (me) {
         currentUser.value = me;
@@ -589,6 +554,8 @@ const app = createApp({
       handlePwdSubmit,
       switchView,
       SUBJECT_INFO,
+      subjectList,
+      weeklySubjects,
       // Helpers
       formatMD,
       getDayName,
