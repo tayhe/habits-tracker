@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import asynccontextmanager
 from datetime import timedelta
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -158,7 +158,34 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    """Liveness + readiness probe.
+
+    The container healthcheck only sees the HTTP status, so an unusable
+    database has to surface as 503 instead of a perpetual `{"status": "ok"}`.
+    """
+    try:
+        conn = database.get_connection()
+        try:
+            conn.execute("SELECT 1").fetchone()
+            # Keep the probe inside the healthcheck timeout (5s in compose):
+            # a write lock held longer than this is itself a failure.
+            conn.execute("PRAGMA busy_timeout = 3000")
+            # BEGIN IMMEDIATE acquires the write lock, so a read-only data
+            # directory (or unwritable -wal/-shm sidecars) fails here.
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("ROLLBACK")
+            journal_mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
+            schema_version = conn.execute("PRAGMA user_version").fetchone()[0]
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.error("Health check failed: %s", exc)
+        raise HTTPException(status_code=503, detail="数据库不可用") from exc
+    return {
+        "status": "ok",
+        "checked_at": clock.now().isoformat(),
+        "db": {"journal_mode": journal_mode, "schema_version": schema_version},
+    }
 
 
 @app.get("/api/v1/config")

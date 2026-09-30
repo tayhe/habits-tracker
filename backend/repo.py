@@ -1,5 +1,8 @@
 import sqlite3
+from datetime import date
 from typing import Optional
+
+from . import weeks
 
 
 def get_active_tasks(conn: sqlite3.Connection) -> list[sqlite3.Row]:
@@ -37,25 +40,54 @@ def get_existing_active_task_ids(conn: sqlite3.Connection, task_ids: list[str]) 
     return {row["task_id"] for row in cursor.fetchall()}
 
 
+def get_completion_counts_by_week(
+    conn: sqlite3.Connection,
+    start_date: str,
+    end_date: str,
+    task_ids: list[str],
+) -> dict[tuple[str, str], int]:
+    """Count completed records per (ISO week label, task) over [start_date, end_date).
+
+    One query covers the whole span; the ISO week is derived in Python with
+    `weeks.iso_week_label`, so bucketing can never disagree with the weekly
+    endpoints that use the same function.
+    """
+    if not task_ids:
+        return {}
+    cursor = conn.cursor()
+    placeholders = ",".join("?" * len(task_ids))
+    cursor.execute(f"""
+        SELECT date, task_id, COUNT(*) as cnt
+        FROM daily_records
+        WHERE completed = 1 AND date >= ? AND date < ?
+          AND task_id IN ({placeholders})
+        GROUP BY date, task_id
+    """, [start_date, end_date] + task_ids)
+    counts: dict[tuple[str, str], int] = {}
+    for row in cursor.fetchall():
+        week = weeks.iso_week_label(date.fromisoformat(row["date"]))
+        key = (week, row["task_id"])
+        counts[key] = counts.get(key, 0) + row["cnt"]
+    return counts
+
+
 def get_completion_counts(
     conn: sqlite3.Connection,
     start_date: str,
     end_date: str,
     task_ids: list[str]
 ) -> dict[str, int]:
-    """Count completed daily records per task in date range [start_date, end_date)."""
-    if not task_ids:
-        return {}
-    cursor = conn.cursor()
-    placeholders = ",".join("?" * len(task_ids))
-    cursor.execute(f"""
-        SELECT task_id, COUNT(*) as cnt
-        FROM daily_records
-        WHERE completed = 1 AND date >= ? AND date < ?
-          AND task_id IN ({placeholders})
-        GROUP BY task_id
-    """, [start_date, end_date] + task_ids)
-    return {row["task_id"]: row["cnt"] for row in cursor.fetchall()}
+    """Count completed daily records per task in date range [start_date, end_date).
+
+    Thin aggregation over `get_completion_counts_by_week` so both share one
+    filter definition.
+    """
+    totals: dict[str, int] = {}
+    for (_week, task_id), cnt in get_completion_counts_by_week(
+        conn, start_date, end_date, task_ids
+    ).items():
+        totals[task_id] = totals.get(task_id, 0) + cnt
+    return totals
 
 
 def get_daily_records_map(

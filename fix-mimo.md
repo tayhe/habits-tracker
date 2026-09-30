@@ -413,9 +413,17 @@ backend/
 
 1. **未提交**：18 modified + 11 untracked 仍在工作区，需按 §6.5 的阶段拆 commit，并先做 DB 快照。
 2. **A-06 / Phase 4.4 前端视图层拆分**：`app.js` 仍是单个 `createApp({setup})`。本轮只抽了纯函数到 `frontend/lib/`（可被 Node 复用），视图拆分在零前端测试网下风险偏高，建议单独一轮并配合浏览器冒烟。
-3. **Phase 5 可选项**：`/health` DB 可写探针、multi-week 批量化查询、CSP 去除 `'unsafe-eval'`（需给 Vue 换 runtime-only 构建 + 预编译模板）。
+3. **Phase 5 剩余**：CSP 去除 `'unsafe-eval'`（需给 Vue 换 runtime-only 构建 + 预编译模板，与零构建定位冲突，需单独权衡）。~~`/health` DB 探针、multi-week 批量化~~ → 已在 §6.7 完成。
 4. **CI 首次验证**：`.github/workflows/ci.yml` 尚未在真实 runner 上跑过（本地等价命令全绿），push 后留意首跑。
 5. **浏览器冒烟**：桌面端会话连接后登录，切一遍雄心/每日/战果/征途四视图，重点看趋势表列头与任务管理的科目下拉（本轮改为 `subjectList` 驱动）。
+
+### 6.7 Phase 5 增量（同日追加）
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| **`/health` 真实就绪探针** | `SELECT 1` + `BEGIN IMMEDIATE` 写探针（`busy_timeout=3s`，卡在 compose 的 5s 超时内），返回 `db.journal_mode` / `db.schema_version`；数据库不可用 → **503**，不再是"DB 挂了也报 ok" | `test_health_reports_database_state`、`test_health_returns_503_when_database_unavailable` |
+| **`/summary/multi-week` 批量化** | 整段范围**一条** SQL + Python 按 `weeks.iso_week_label` 分桶；26 周由 26 次查询降到 1 次。`get_completion_counts` 改为对同一实现的聚合，weekly / multi-week / records 三处调用共用一个过滤条件 | `test_multi_week_matches_weekly_endpoint`（与 `/summary/weekly` 逐项对齐，含防空断言）、`test_multi_week_issues_single_records_query`（weeks=8 断言恰好 1 条 `daily_records` SELECT） |
+| **测试** | pytest **39 passed**（35 → 39）；ruff / 裸时钟 / 对拍 2225 / 前端 596+163 全绿 | — |
 
 ---
 

@@ -102,27 +102,29 @@ def multi_week_summary(
         tasks = {t["task_id"]: dict(t) for t in task_rows}
         all_task_ids = list(tasks.keys())
 
+        # One query covers every week in the span instead of one query per week.
+        span_start = current_week_start - timedelta(days=7 * (weeks_count - 1))
+        span_end = current_week_start + timedelta(days=7)  # exclusive
+        counts_by_week = repo.get_completion_counts_by_week(
+            conn, span_start.isoformat(), span_end.isoformat(), all_task_ids
+        )
+
         results = []
         for i in range(weeks_count):
             offset = i * 7
             week_monday = current_week_start - timedelta(days=offset)
             week_str = weeks.iso_week_label(week_monday)
 
-            week_start_str = week_monday.isoformat()
-            week_end_str = (week_monday + timedelta(days=7)).isoformat()
-
             tasks_met = 0
             total_tasks = len(all_task_ids)
             total_reward = 0.0
             subject_data = {s: {"tasks_met": 0, "total_tasks": 0} for s in config.SUBJECTS}
 
-            completion_counts = repo.get_completion_counts(conn, week_start_str, week_end_str, all_task_ids)
-
             for t in tasks.values():
                 subject = t["subject"]
                 if subject in subject_data:
                     subject_data[subject]["total_tasks"] += 1
-                cnt = completion_counts.get(t["task_id"], 0)
+                cnt = counts_by_week.get((week_str, t["task_id"]), 0)
                 if cnt >= t["weekly_min"]:
                     tasks_met += 1
                     if subject in subject_data:

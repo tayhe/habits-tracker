@@ -182,7 +182,7 @@ uv run ruff check .
 ### 系统配置与健康检查
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
-| `GET` | `/health` | 健康检查探针 | 公开 |
+| `GET` | `/health` | 健康检查探针：`SELECT 1` + `BEGIN IMMEDIATE` 写探针，返回 WAL 模式与 schema 版本；数据库不可用时返回 **503**（容器 healthcheck 依赖） | 公开 |
 | `GET` | `/api/v1/config` | 获取前端动态配置（可编辑天数窗口、科目列表 `subjects`） | 公开 |
 
 ### 认证接口 (`/auth`)

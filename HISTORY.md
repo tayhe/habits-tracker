@@ -33,7 +33,11 @@
 - **`DB_PATH` 单源**：`database.py` 不再拷贝 `config.DB_PATH`，测试只需 patch `config` 一处。
 - **迁移字典化**：`user_version` 迁移改为 `MIGRATIONS` 注册表，建表 → 迁移 → 播种顺序执行。
 - **检查脚本与 CI**：新增 `scripts/`（前后端周算法与表情对拍、前端单测、裸时钟守护）、`.pre-commit-config.yaml` 与 `.github/workflows/ci.yml`。
-- **测试网扩容**：pytest 16 → 35（新增权限矩阵、429 端到端、安全头、契约与 repo 层测试），另加 2225 例前后端对拍与 596 条前端断言。
+- **测试网扩容**：pytest 16 → 39（新增权限矩阵、429 端到端、安全头、契约、repo 层与 Phase 5 探针测试），另加 2225 例前后端对拍与 596 条前端断言。
+
+### Phase 5 首批
+- **`/health` 真实就绪探针**：`SELECT 1` + `BEGIN IMMEDIATE` 写探针（`busy_timeout=3s`，卡在 compose 的 5s 超时内），返回 WAL 模式与 `user_version`；数据库不可用时返回 503，容器 healthcheck 不再"DB 挂了也报 ok"。
+- **multi-week 批量化**：`/summary/multi-week` 由「每周一条 count 查询」改为「整段范围一条查询 + Python 按 ISO 周分桶」，26 周从 26 次查询降到 1 次；分桶复用 `weeks.iso_week_label`，与 `/summary/weekly` 永不漂移，并有单查询回归测试兜底。
 
 ---
 
