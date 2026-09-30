@@ -2,25 +2,103 @@
 //
 // The Vue app compiles `index.html` in the browser, so a typo like
 // `v-for="sub in weeklySubject"` would only surface as a silently empty UI.
-// This script cross-checks template expressions against the object returned
-// from `setup()` in app.js, plus `v-for` locals and a whitelist of globals.
+// This script cross-checks template expressions against the union of:
+//
+//   - the object returned from `setup()` in frontend/app.js (globals/helpers)
+//   - each view module's `bindings: { ... }` object in frontend/views/*.js
+//
+// plus `v-for` locals and a whitelist of globals. Object bodies are found by
+// brace matching (strings and comments skipped), and binding objects must use
+// shorthand properties (`foo,` not `foo: bar,`).
 //
 //     node scripts/check_template_bindings.mjs
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const html = readFileSync(new URL('../frontend/index.html', import.meta.url), 'utf8');
-const appJs = readFileSync(new URL('../frontend/app.js', import.meta.url), 'utf8');
+const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', 'frontend');
+const html = readFileSync(join(FRONTEND, 'index.html'), 'utf8');
+const appJs = readFileSync(join(FRONTEND, 'app.js'), 'utf8');
 
-// --- identifiers returned from setup() --------------------------------------
-const returnBlock = appJs.match(/return\s*\{([\s\S]*?)\n    \};/);
-if (!returnBlock) {
-  console.error('could not locate the setup() return object in app.js');
+function skipString(source, i) {
+  const quote = source[i];
+  for (let j = i + 1; j < source.length; j++) {
+    if (source[j] === '\\') { j += 1; continue; }
+    if (source[j] === quote) return j;
+  }
+  return source.length;
+}
+
+/** Body (without braces) of the balanced object starting at `openIndex`. */
+function objectBody(source, openIndex) {
+  let depth = 0;
+  for (let i = openIndex; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === "'" || ch === '"' || ch === '`') { i = skipString(source, i); continue; }
+    if (ch === '/' && source[i + 1] === '/') { i = source.indexOf('\n', i); if (i < 0) break; continue; }
+    if (ch === '/' && source[i + 1] === '*') { i = source.indexOf('*/', i + 2); if (i < 0) break; i += 1; continue; }
+    if (ch === '{') depth += 1;
+    else if (ch === '}') { depth -= 1; if (depth === 0) return source.slice(openIndex + 1, i); }
+  }
+  return null;
+}
+
+function shorthandIdentifiers(body) {
+  const noComments = body.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  // Drop spreads (`...viewBindings`) first: the identifier of a spread is not
+  // an exposed binding, and view bindings are unioned from views/*.js anyway.
+  const noSpreads = noComments.replace(/\.\.\.[A-Za-z_$][\w$]*/g, ' ');
+  return [...noSpreads.matchAll(/([A-Za-z_$][\w$]*)\s*(?:,|$)/gm)].map(m => m[1]);
+}
+
+function locate(source, pattern, what) {
+  const hits = [...source.matchAll(pattern)];
+  if (hits.length === 0) {
+    console.error(`could not locate ${what}`);
+    process.exit(1);
+  }
+  return hits;
+}
+
+const exposed = new Set();
+// Files scanned for the `name: value` hint below.
+const sources = [{ name: 'frontend/app.js', source: appJs }];
+
+// --- setup() return object --------------------------------------------------
+// After the view split app.js has exactly one `return {` (the setup surface);
+// before it, inner computeds also return objects, so fall back to the last one
+// -- setup()'s return is the final statement of the component.
+const viewsDir = join(FRONTEND, 'views');
+const viewsExist = existsSync(viewsDir);
+const returns = [...appJs.matchAll(/\breturn\s*\{/g)];
+if (returns.length === 0) {
+  console.error('could not locate `return {` in frontend/app.js');
   process.exit(1);
 }
-const exposed = new Set(
-  [...returnBlock[1].matchAll(/([A-Za-z_$][\w$]*)\s*(?:,|$)/gm)].map(m => m[1]),
-);
+if (viewsExist && returns.length !== 1) {
+  console.error(`frontend/app.js must contain exactly one \`return {\` (found ${returns.length}); `
+    + 'view state belongs in frontend/views/*.js');
+  process.exit(1);
+}
+const lastReturn = returns[returns.length - 1];
+const setupBody = objectBody(appJs, appJs.indexOf('{', lastReturn.index));
+if (setupBody === null) { console.error('unbalanced object in app.js setup() return'); process.exit(1); }
+for (const id of shorthandIdentifiers(setupBody)) exposed.add(id);
+
+// --- each view module's bindings object ------------------------------------
+if (viewsExist) {
+  for (const file of readdirSync(viewsDir).filter(f => f.endsWith('.js')).sort()) {
+    const source = readFileSync(join(viewsDir, file), 'utf8');
+    sources.push({ name: `frontend/views/${file}`, source });
+    const hits = locate(source, /\bbindings\s*:\s*\{/g, `bindings: { in views/${file}`);
+    for (const hit of hits) {
+      const body = objectBody(source, source.indexOf('{', hit.index));
+      if (body === null) { console.error(`unbalanced bindings object in views/${file}`); process.exit(1); }
+      for (const id of shorthandIdentifiers(body)) exposed.add(id);
+    }
+  }
+}
 
 // --- expressions appearing in the template ----------------------------------
 const GLOBALS = new Set([
@@ -73,8 +151,19 @@ for (const raw of expressions) {
 }
 
 if (missing.size > 0) {
-  console.error('Template references bindings that setup() does not expose:');
-  for (const [name, ctx] of missing) console.error(`  ${name}  <-  ${ctx}`);
+  console.error('Template references bindings that setup()/views do not expose:');
+  for (const [name, ctx] of missing) {
+    console.error(`  ${name}  <-  ${ctx}`);
+    // Most common cause after the view split: `foo: bar` inside a bindings
+    // object, which shorthand extraction deliberately ignores.
+    for (const file of sources) {
+      if (new RegExp(`\\b${name}\\s*:`).test(file.source)) {
+        console.error(`    hint: \`${name}: ...\` is only collected as shorthand; write \`${name},\``
+          + ` in ${file.name}`);
+        break;
+      }
+    }
+  }
   process.exit(1);
 }
 

@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 
 NODE="${NODE:-node}"
 
-for f in frontend/app.js frontend/lib/*.js; do
+for f in frontend/app.js frontend/lib/*.js frontend/views/*.js; do
   $NODE --check "$f"
 done
 

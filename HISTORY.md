@@ -34,6 +34,7 @@
 - **迁移字典化**：`user_version` 迁移改为 `MIGRATIONS` 注册表，建表 → 迁移 → 播种顺序执行。
 - **检查脚本与 CI**：新增 `scripts/`（前后端周算法与表情对拍、前端单测、裸时钟守护）、`.pre-commit-config.yaml` 与 `.github/workflows/ci.yml`；**push 后 GitHub Actions 首跑通过**（41s，6 项检查全绿）。
 - **无头 UI 冒烟（`scripts/ui_smoke.sh` + `ui_smoke.py`，Playwright 为 dev 依赖）**：起隔离实例（`127.0.0.1:15999`、独立 `DATA_DIR`）后走真实 Chromium 完成登录、五视图非空渲染、`subjectList` 接线（趋势表头 + 任务科目下拉）、播种数据落表为收益、console/pageerror/HTTP ≥400 全零，共 **22 项断言** + 逐视图截图。已用「注入 `subjectList` 取值错误」的变异验证其**会非零退出**——该类回归 pytest、静态模板绑定检查与 curl 均不可见。
+- **视图层拆分（Phase 4.4 / A-06）**：`app.js` 由 604 行降到 **230 行**（只剩全局状态、api/鉴权/toast 与视图装配），视图状态迁到 `frontend/views/{ambition,daily,weekly,trend,tasks}.js`（42–215 行），各返回 `{ load, bindings, docClick? }` 由 `switchView` 统一派发；暴露面与拆分前**逐项相等（50 个 binding）**，由改造后的 `check_template_bindings.mjs`（多来源收集 + `name:value` 提示 + 变异验证）与 22 项无头 UI 冒烟共同把关。
 - **测试网扩容**：pytest 16 → 39（新增权限矩阵、429 端到端、安全头、契约、repo 层与 Phase 5 探针测试），另加 2225 例前后端对拍与 596 条前端断言。
 
 ### Phase 5 首批

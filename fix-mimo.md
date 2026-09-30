@@ -413,7 +413,7 @@ backend/
 **遗留项（按优先级）**：
 
 1. ~~**未提交**~~ ✅ **已完成（第 3 轮）**：按 §6.5 拆成 6 个 commit（`fix` ×2 → `feat` → `test` → `docs`，每个 commit 在独立 worktree 中跑过 pytest + ruff），DB 快照 `data/backups/pre-fix-20260930.db`，已 push `6331b41..4903066`。
-2. **A-06 / Phase 4.4 前端视图层拆分**：`app.js` 仍是单个 `createApp({setup})`。本轮只抽了纯函数到 `frontend/lib/`（可被 Node 复用），视图拆分在零前端测试网下风险偏高，建议单独一轮并配合浏览器冒烟。
+2. ~~**A-06 / Phase 4.4 前端视图层拆分**~~ ✅ **已完成（§6.8.2）**：`app.js` 604 → 230 行，视图状态迁至 `frontend/views/`（5 模块），护栏先改造并经 2 次变异验证，暴露面守恒 50 绑定，无头 UI 冒烟 22/22 通过。剩余可选项：`daily.js`（215 行）内的浮层可再抽 `daily-picker.js`。
 3. **Phase 5 剩余**：CSP 去除 `'unsafe-eval'`（需给 Vue 换 runtime-only 构建 + 预编译模板，与零构建定位冲突，需单独权衡）。~~`/health` DB 探针、multi-week 批量化~~ → 已在 §6.7 完成。
 4. ~~**CI 首次验证**~~ ✅ **已完成（第 3 轮）**：run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) **41s 全绿**，ruff / pytest(39) / 裸时钟守护 / 前端单测与语法 / 对拍 2225 六项均通过；两条 annotation 仅为外部弃用提示（Node 20、ubuntu-latest 迁移）。
 5. ~~**浏览器冒烟**~~ ✅ **已完成（2026-10-01）**：改为 Playwright 无头方案（桌面端始终未连接），`./scripts/ui_smoke.sh` 22 项断言全过，覆盖雄心/每日/战果/征途/军令状五视图 + `subjectList` 接线 + console/HTTP 全零，并经变异验证有效。详见 §6.8.1。
@@ -428,14 +428,14 @@ backend/
 | **提交与推送** | 按阶段拆 **6 个 commit**：`fix`(repo/clock/SQL 单源) → `fix`(docs 门控/CORS/安全头) → `fix`(前端错误归一/本地解析/科目 config) → `test`(+CI/pre-commit) → `docs` → `feat`(本项)；每个中间 commit 均在独立 worktree 中验证 pytest + ruff 通过后再提交 | `git log 6331b41..4903066`，工作区 clean |
 | **CI 首跑** | GitHub Actions `checks` **41s 全绿**：ruff、pytest(39)、裸时钟守护、前端单测与语法、前后端对拍 2225 六项全通过 | run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) |
 
-**当前仍待办**（三项的完整评估与决策见 **§6.8**）：① 浏览器冒烟 → ✅ **已完成**（Playwright 无头，22 项断言，§6.8.1）② Phase 4.4 视图层拆分 → **以 ① 为门禁，现可进行**（§6.8.2）③ CSP 去 `'unsafe-eval'` → **建议关闭，待拍板**（§6.8.3）。
+**当前仍待办**（三项的完整评估与决策见 **§6.8**）：① 浏览器冒烟 → ✅ **已完成**（Playwright 无头，22 项断言，§6.8.1）② Phase 4.4 视图层拆分 → ✅ **已完成**（`app.js` 604 → 230 行，暴露面守恒，UI 冒烟门禁通过，§6.8.2）③ CSP 去 `'unsafe-eval'` → **建议关闭，待拍板**（§6.8.3）。
 
 ### 6.8 三项遗留的评估与决策（第 3 轮后续）
 
 | # | 项 | 决策 | 结论所在 |
 |---|---|---|---|
 | 5 | 浏览器四视图冒烟 | ✅ **已完成**：`scripts/ui_smoke.sh` + `ui_smoke.py`（Playwright 无头 Chromium），22 项断言 + 变异验证 | §6.8.1 |
-| 2 | 前端视图层拆分（A-06 / Phase 4.4） | ⏸ **已排期**：在 §6.8.1 落地后进行，且以它为门禁 | §6.8.2 |
+| 2 | 前端视图层拆分（A-06 / Phase 4.4） | ✅ **已完成**：以 §6.8.1 为门禁执行，暴露面守恒（50 绑定）+ 22 项 UI 冒烟全绿 | §6.8.2 |
 | 3 | CSP 去除 `'unsafe-eval'` | ⚠️ **建议关闭（won't fix）**，待用户拍板 | §6.8.3 |
 
 #### 6.8.1 浏览器冒烟 → Playwright 无头脚本（已选定）
@@ -485,6 +485,16 @@ backend/
 **工作量**：视图改造 1–2h + 检查脚本改造 0.5h + 验证 0.5h ≈ 半天。
 
 **执行约束**（用户已确认的排期）：① 必须在 §6.8.1 落地后进行；② 一次拆完 5 个视图，不半拆（半拆比不拆更乱）；③ 仅在确实有持续改视图的需求时才值得做，否则是"为整洁而拆"。
+
+**执行记录（2026-09-30 → 10-01，已完成）**：
+
+| 项 | 结果 |
+|---|---|
+| **护栏先行改造** | `check_template_bindings.mjs` 由"正则定位单个 `return {`"改为**多来源收集**（`app.js` setup 的 return + 每个 `views/*.js` 的 `bindings: {…}`，花括号配对并跳过字符串与注释），顺带修掉"注释尾词被当成 binding"的虚高计数（87 → 实际 50）；新增对 `name: value` 写法的定位提示。**变异验证 ×2**：删掉 `dailyDays,` → exit 1 并点名；改成 `dailyDays: weekData,` → exit 1 并打印"改用简写"的 hint |
+| **拆分结果** | `app.js` **604 → 230 行**（只剩全局状态、api/鉴权/toast、视图装配与 `switchView`）；新增 `frontend/views/`：`ambition` 42 / `weekly` 46 / `trend` 69 / `tasks` 78 / `daily` **215** 行。契约统一为 `{ load, bindings, docClick? }`，`switchView` 按视图名派发 `load`，`setup()` 返回 `...viewBindings` |
+| **暴露面守恒** | 拆分前后绑定数**均为 50**（护栏报数），模板 163 条表达式 0 缺失——静态层面证明没有丢绑定 |
+| **门禁（§6.8.1）** | 无头 UI 冒烟 **22/22 通过**：五视图非空渲染、趋势表头/15 行下拉 == `subjectList`、播种收益落表（W39=2.8 / W40=1.2）、console/pageerror/HTTP 全零；另 `check_frontend.sh` 扩到 `views/*.js` 的 `node --check`，pytest 39（含 `TZ=UTC` 复跑）、对拍 2225 均绿 |
+| **偏离计划** | `daily.js` **215 行 > 150 行**目标：它还含"补录任务"浮层，而浮层与 `weekData` / `loadWeekData` 强耦合，抽出需注入两个内部引用、纯增一层间接，故本轮不抽；如需可后续出 `views/daily-picker.js`（约 −90 行） |
 
 #### 6.8.3 CSP 去除 `'unsafe-eval'`（建议：关闭，待拍板）
 

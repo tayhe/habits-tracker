@@ -248,7 +248,8 @@ habits-tracker/
 │   └── routers/      # API 路由拆分（auth, tasks, records, summary）
 ├── frontend/         # 前端静态单页（由 FastAPI 托管，零构建 ESM）
 │   ├── index.html    # 声明式 SPA 模板（科目列表由 /config 驱动）
-│   ├── app.js        # Vue 3 视图与响应式状态
+│   ├── app.js        # 应用装配：全局状态、api/鉴权/toast、视图组装与 switchView
+│   ├── views/        # 5 个视图模块 ambition/daily/weekly/trend/tasks，各返回 { load, bindings }
 │   ├── lib/          # 纯函数模块：dates / iso-week / progress / errors（Node 可直接导入）
 │   ├── style.css     # Notion 极简风格样式
 │   ├── manifest.json # PWA 渐进式 Web 应用配置
@@ -257,7 +258,9 @@ habits-tracker/
 ├── scripts/          # 本地 / CI 检查脚本
 │   ├── parity_check.sh + parity_backend.py + parity_frontend.mjs  # 前后端周算法与表情对拍
 │   ├── check_frontend.sh + frontend_unit.mjs                       # 前端语法检查与纯函数单测
-│   └── check_bare_dates.sh                                         # 禁止绕过 clock.py 直接读时钟
+│   ├── check_template_bindings.mjs                                 # 模板 ↔ setup/views 绑定静态交叉检查
+│   ├── check_bare_dates.sh                                         # 禁止绕过 clock.py 直接读时钟（含 tests/）
+│   └── ui_smoke.sh + ui_smoke.py                                   # 无头浏览器 UI 冒烟（需 chromium）
 ├── tests/            # 自动化测试套件（pytest + TestClient）
 │   ├── conftest.py   # 临时库隔离 + 全局状态（mock 时钟、限速器）自动复位
 │   ├── test_api_regressions.py      # P0/P1 回归测试与边界校验
