@@ -1,9 +1,10 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi import HTTPException
 
-from backend import config, database, rules, weeks
+from backend import clock, config, database, rules, weeks
 
 
 def test_reward_qualification_calculation():
@@ -17,8 +18,14 @@ def test_reward_qualification_calculation():
 
 
 def test_child_editable_window_rule():
-    """Test assert_editable raises 403 when outside window."""
-    today = date.today()
+    """Test assert_editable raises 403 when outside window.
+
+    Uses a fixed *app* clock so the result does not depend on the host timezone:
+    deriving "today" from the host used to pass locally (Asia/Shanghai) but fail
+    on the CI runner during 16:00-24:00 UTC, when the two dates diverge.
+    """
+    clock.set_mock_time(datetime(2026, 10, 1, 0, 30, tzinfo=ZoneInfo("Asia/Shanghai")))
+    today = clock.today()  # 2026-10-01 whatever the host timezone says
     # Child within window (6 days ago) -> no exception
     rules.assert_editable("child", today - timedelta(days=6), window_days=7)
     # Child outside window (7 days ago) -> 403

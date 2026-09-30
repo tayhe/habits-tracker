@@ -1,9 +1,11 @@
-from datetime import date, timedelta
+from datetime import timedelta
+
+from backend import clock
 
 
 def test_archived_task_consistent_across_endpoints(parent_client):
     """P1-01: Soft-deleted tasks must be consistently excluded from weekly, multi-week, and records/week."""
-    mon = date.today() - timedelta(days=date.today().weekday())
+    mon = clock.today() - timedelta(days=clock.today().weekday())
     week_str = f"{mon.isocalendar()[0]}-W{mon.isocalendar()[1]:02d}"
 
     # Record completion for en_recite
@@ -37,7 +39,7 @@ def test_archived_task_consistent_across_endpoints(parent_client):
 
 def test_empty_day_completed_days_zero(parent_client):
     """P2-03: When there are no tasks, week_completed_days must be 0, not 7."""
-    mon = date.today() - timedelta(days=date.today().weekday())
+    mon = clock.today() - timedelta(days=clock.today().weekday())
 
     # Archive all tasks
     tasks = parent_client.get("/api/v1/tasks").json()
@@ -55,7 +57,7 @@ def test_fulfillment_week_validation(parent_client):
     assert res_bad.status_code == 400
 
     # Valid week format accepted
-    mon = date.today() - timedelta(days=date.today().weekday())
+    mon = clock.today() - timedelta(days=clock.today().weekday())
     valid_week = f"{mon.isocalendar()[0]}-W{mon.isocalendar()[1]:02d}"
     res_ok = parent_client.put(f"/api/v1/summary/fulfillment?week={valid_week}&fulfilled=true")
     assert res_ok.status_code == 200
@@ -69,7 +71,7 @@ def test_fulfillment_week_validation(parent_client):
 
 def test_child_cannot_update_fulfillment(child_client):
     """Child user must not be able to update weekly fulfillment."""
-    mon = date.today() - timedelta(days=date.today().weekday())
+    mon = clock.today() - timedelta(days=clock.today().weekday())
     valid_week = f"{mon.isocalendar()[0]}-W{mon.isocalendar()[1]:02d}"
     res = child_client.put(f"/api/v1/summary/fulfillment?week={valid_week}&fulfilled=true")
     assert res.status_code == 403

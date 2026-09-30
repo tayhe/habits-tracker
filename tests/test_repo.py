@@ -1,6 +1,6 @@
-from datetime import date, timedelta
+from datetime import timedelta
 
-from backend import database, repo
+from backend import clock, database, repo
 
 
 def test_repo_active_tasks_and_completion_counts(parent_client):
@@ -9,7 +9,7 @@ def test_repo_active_tasks_and_completion_counts(parent_client):
         tasks = repo.get_active_tasks(conn)
         assert len(tasks) > 0
 
-        mon = date.today() - timedelta(days=date.today().weekday())
+        mon = clock.today() - timedelta(days=clock.today().weekday())
         week_end = mon + timedelta(days=7)
         task_ids = [t["task_id"] for t in tasks]
 
@@ -20,7 +20,7 @@ def test_repo_active_tasks_and_completion_counts(parent_client):
 
 def test_records_week_query_efficiency(parent_client):
     """Verify /records/week executes in a single connection with only 3 queries (no N+1)."""
-    mon = date.today() - timedelta(days=date.today().weekday())
+    mon = clock.today() - timedelta(days=clock.today().weekday())
 
     queries = []
     orig_get_connection = database.get_connection

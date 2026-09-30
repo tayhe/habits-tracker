@@ -1,11 +1,11 @@
-from datetime import date, timedelta
+from datetime import timedelta
 
-from backend import config
+from backend import clock, config
 
 
 def test_t01_delete_task_with_records(parent_client):
     """T-01: P0-01 - Deleting a task with daily records must succeed (soft delete) rather than 500."""
-    today = date.today().isoformat()
+    today = clock.today().isoformat()
     # Create a record for task 'en_word'
     r1 = parent_client.put("/api/v1/records", json={"date": today, "task_id": "en_word", "completed": True})
     assert r1.status_code == 200
@@ -51,7 +51,7 @@ def test_t03_logout_invalidates_session(client):
 def test_t04_unknown_task_id_returns_404(parent_client):
     """T-07: P1-04 - Upserting record with unknown task_id must return 404, not 500."""
     resp = parent_client.put("/api/v1/records", json={
-        "date": date.today().isoformat(),
+        "date": clock.today().isoformat(),
         "task_id": "non_existent_task",
         "completed": True
     })
@@ -59,7 +59,7 @@ def test_t04_unknown_task_id_returns_404(parent_client):
 
 def test_t05_child_editable_window_message(child_client):
     """T-08: P1-05 - 403 error detail must reflect EDITABLE_DAY_WINDOW, not 'last 3 days'."""
-    out_of_window_date = (date.today() - timedelta(days=config.EDITABLE_DAY_WINDOW + 2)).isoformat()
+    out_of_window_date = (clock.today() - timedelta(days=config.EDITABLE_DAY_WINDOW + 2)).isoformat()
     resp = child_client.put("/api/v1/records", json={
         "date": out_of_window_date,
         "task_id": "en_word",
