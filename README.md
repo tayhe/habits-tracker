@@ -51,10 +51,14 @@ uv run ruff check .
 # 前后端逻辑一致性对拍（ISO 周算法 + 猫猫表情）与前端纯函数单测
 ./scripts/parity_check.sh
 ./scripts/check_frontend.sh
+
+# 无头 UI 冒烟（真实浏览器：登录 → 五视图渲染 → subjectList 接线 → console 零错误，逐视图截图）
+./scripts/ui_smoke.sh                 # 首次需先执行: uv run playwright install chromium
 ```
 
 > 可选：`pre-commit install` 后，每次提交会自动跑 ruff、对拍、时钟与前端检查
 > （配置见 `.pre-commit-config.yaml`）。CI 见 `.github/workflows/ci.yml`（push 触发，已首跑通过）。
+> UI 冒烟需本机浏览器，**暂未进 CI**（作用与局限见 [fix-mimo.md](fix-mimo.md) §6.8.1）。
 
 ### 环境变量
 
@@ -262,6 +266,7 @@ habits-tracker/
 │   ├── test_summary_consistency.py  # 日 / 周 / 趋势三端口径一致性
 │   ├── test_repo.py                 # repo 层查询与索引有效性
 │   ├── test_rules.py                # 业务规则与备份轮转
+│   ├── test_phase5.py               # /health 就绪探针与 multi-week 批量化
 │   ├── test_weeks.py                # ISO 周算法跨年边界
 │   └── test_concurrency.py          # 并发写入与 Busy Timeout 锁
 ├── .github/workflows/ci.yml # CI：ruff + pytest + 对拍 + 前端检查

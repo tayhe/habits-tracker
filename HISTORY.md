@@ -33,6 +33,7 @@
 - **`DB_PATH` 单源**：`database.py` 不再拷贝 `config.DB_PATH`，测试只需 patch `config` 一处。
 - **迁移字典化**：`user_version` 迁移改为 `MIGRATIONS` 注册表，建表 → 迁移 → 播种顺序执行。
 - **检查脚本与 CI**：新增 `scripts/`（前后端周算法与表情对拍、前端单测、裸时钟守护）、`.pre-commit-config.yaml` 与 `.github/workflows/ci.yml`；**push 后 GitHub Actions 首跑通过**（41s，6 项检查全绿）。
+- **无头 UI 冒烟（`scripts/ui_smoke.sh` + `ui_smoke.py`，Playwright 为 dev 依赖）**：起隔离实例（`127.0.0.1:15999`、独立 `DATA_DIR`）后走真实 Chromium 完成登录、五视图非空渲染、`subjectList` 接线（趋势表头 + 任务科目下拉）、播种数据落表为收益、console/pageerror/HTTP ≥400 全零，共 **22 项断言** + 逐视图截图。已用「注入 `subjectList` 取值错误」的变异验证其**会非零退出**——该类回归 pytest、静态模板绑定检查与 curl 均不可见。
 - **测试网扩容**：pytest 16 → 39（新增权限矩阵、429 端到端、安全头、契约、repo 层与 Phase 5 探针测试），另加 2225 例前后端对拍与 596 条前端断言。
 
 ### Phase 5 首批

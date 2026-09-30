@@ -416,7 +416,7 @@ backend/
 2. **A-06 / Phase 4.4 前端视图层拆分**：`app.js` 仍是单个 `createApp({setup})`。本轮只抽了纯函数到 `frontend/lib/`（可被 Node 复用），视图拆分在零前端测试网下风险偏高，建议单独一轮并配合浏览器冒烟。
 3. **Phase 5 剩余**：CSP 去除 `'unsafe-eval'`（需给 Vue 换 runtime-only 构建 + 预编译模板，与零构建定位冲突，需单独权衡）。~~`/health` DB 探针、multi-week 批量化~~ → 已在 §6.7 完成。
 4. ~~**CI 首次验证**~~ ✅ **已完成（第 3 轮）**：run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) **41s 全绿**，ruff / pytest(39) / 裸时钟守护 / 前端单测与语法 / 对拍 2225 六项均通过；两条 annotation 仅为外部弃用提示（Node 20、ubuntu-latest 迁移）。
-5. **浏览器冒烟**：桌面端会话连接后登录，切一遍雄心/每日/战果/征途四视图，重点看趋势表列头与任务管理的科目下拉（本轮改为 `subjectList` 驱动）。
+5. ~~**浏览器冒烟**~~ ✅ **已完成（2026-10-01）**：改为 Playwright 无头方案（桌面端始终未连接），`./scripts/ui_smoke.sh` 22 项断言全过，覆盖雄心/每日/战果/征途/军令状五视图 + `subjectList` 接线 + console/HTTP 全零，并经变异验证有效。详见 §6.8.1。
 
 ### 6.7 Phase 5 增量（同日追加）
 
@@ -428,7 +428,79 @@ backend/
 | **提交与推送** | 按阶段拆 **6 个 commit**：`fix`(repo/clock/SQL 单源) → `fix`(docs 门控/CORS/安全头) → `fix`(前端错误归一/本地解析/科目 config) → `test`(+CI/pre-commit) → `docs` → `feat`(本项)；每个中间 commit 均在独立 worktree 中验证 pytest + ruff 通过后再提交 | `git log 6331b41..4903066`，工作区 clean |
 | **CI 首跑** | GitHub Actions `checks` **41s 全绿**：ruff、pytest(39)、裸时钟守护、前端单测与语法、前后端对拍 2225 六项全通过 | run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) |
 
-**当前仍待办**（详见 §6.6 遗留项）：① 浏览器四视图冒烟（桌面端未连接）② Phase 4.4 前端视图层拆分 ③ CSP 去 `'unsafe-eval'`。
+**当前仍待办**（三项的完整评估与决策见 **§6.8**）：① 浏览器冒烟 → ✅ **已完成**（Playwright 无头，22 项断言，§6.8.1）② Phase 4.4 视图层拆分 → **以 ① 为门禁，现可进行**（§6.8.2）③ CSP 去 `'unsafe-eval'` → **建议关闭，待拍板**（§6.8.3）。
+
+### 6.8 三项遗留的评估与决策（第 3 轮后续）
+
+| # | 项 | 决策 | 结论所在 |
+|---|---|---|---|
+| 5 | 浏览器四视图冒烟 | ✅ **已完成**：`scripts/ui_smoke.sh` + `ui_smoke.py`（Playwright 无头 Chromium），22 项断言 + 变异验证 | §6.8.1 |
+| 2 | 前端视图层拆分（A-06 / Phase 4.4） | ⏸ **已排期**：在 §6.8.1 落地后进行，且以它为门禁 | §6.8.2 |
+| 3 | CSP 去除 `'unsafe-eval'` | ⚠️ **建议关闭（won't fix）**，待用户拍板 | §6.8.3 |
+
+#### 6.8.1 浏览器冒烟 → Playwright 无头脚本（已选定）
+
+**为什么现有手段不够**：本轮有两处纯 UI 行为改动（趋势表列头/表体、任务管理科目下拉改由 `/config` 的 `subjectList` 驱动），三种验证各差一口气。
+
+| 手段 | 能证明 | 证明不了 |
+|---|---|---|
+| curl 全链路 | `/config` 返回 `subjects` | 浏览器是否拿它去渲染 |
+| `check_template_bindings.mjs`（87 绑定 × 163 表达式） | 模板标识符在 `setup()` 返回面**存在** | 取值正确性、最终 DOM |
+| pytest 39 项 | 后端契约 | 以上两项 |
+
+**方案**：`uv add --dev playwright` + Chromium（无头），新增 `scripts/ui_smoke.py` + `scripts/ui_smoke.sh`（脚本自带隔离实例：`DATA_DIR=/tmp/opencode/ui-smoke-data`、`127.0.0.1:15999`，与生产 15000 容器隔离）。断言面：
+
+1. UI 登录 → `#app` 可见、头部用户名正确；
+2. 五个视图逐个切换（喵的雄心/每日捕猎/一周战果/征途/军令状），各自容器**非空渲染**（捕获"静默空白"这一最典型的回归形态）；
+3. `#trendView thead` 学科列 == `/api/v1/config` 的 `subjects`，`tbody` 行数 ≥ 2（需先经 API 播种近两周记录）；
+4. `#taskMgmtView` 科目下拉 options == `subjects`；
+5. 全程 **console error / pageerror / ≥400 响应均为 0**；
+6. 每视图截图留档。
+
+**价值**：一次性解开"零前端测试网"这个根约束，因此它同时是 §6.8.2 的前置护栏。
+
+**执行结果（2026-10-01）**：
+
+| 项 | 结果 |
+|---|---|
+| 依赖 | `uv add --dev playwright`（1.63.0）+ `uv run playwright install chromium`（Headless Shell **153.0.8010.12**，aarch64 免额外系统依赖直接启动） |
+| 用例 | `./scripts/ui_smoke.sh`：**22 项断言全过，exit 0**；隔离实例（`127.0.0.1:15999` + `/tmp/opencode/ui-smoke-data`，每次 wipe 重建、拒绝接管已占用端口）；播种 **33 条打卡**（11 天 × 3 任务），趋势表命中 **W39=2.8 / W40=1.2** 两周收益 |
+| 接线 | 征途表头学科列 `['英语','数学','语文']` == `/config.subjects`；军令状 **15 行**科目下拉逐行 == `subjectList`；征途 8 行数据、2 周有收益 |
+| 静默性守卫 | 五视图各断言 `innerText ≥ 20 字符`（拦截"静默空白"），且 console error / pageerror / HTTP≥400 / 请求失败**全为 0**（唯一白名单 = `GET /auth/me` 登录前 401，属会话恢复探测的设计行为） |
+| 截图 | `/tmp/opencode/ui-smoke-shots/{1..5}-<视图名>.png` |
+| **变异验证** | 把 `subjectList` 取值改成 `config.value.subjectz`——这是"只有浏览器能发现"的真错误 → `app.js:184` 抛 `TypeError: Cannot read properties of undefined (reading 'map')`，`#app` 永不出现 → 冒烟 **exit 1**（`UI 登录失败` + `console error = 1` 并打印堆栈）。pytest / `check_template_bindings.mjs`（该标识符仍是合法返回绑定）/ curl 在同一变异下**均仍为绿**。还原后复跑恢复 22 项全绿 |
+
+**局限**：① 仅桌面视口 1440×960，未覆盖移动端与暗色模式；② 行为级断言，不做像素/视觉回归；③ 未进 CI（runner 需额外 `playwright install chromium`，可作后续可选 job）。
+
+#### 6.8.2 前端视图层拆分（A-06 / Phase 4.4）—— 在 §6.8.1 完成后进行
+
+**现状**：`app.js` **604 行**、单个 `createApp({setup()})`，5 个视图仅靠注释分块（Ambition `:170` / Daily `:198` / Weekly `:378` / Trend `:407` / TaskMgmt `:455`），`:542` 一次性返回 **87 个绑定**；模板 379 行、55 个指令，**不改模板**。目标形态：各视图状态抽成 `frontend/views/*.js` 工厂（`({ctx}) => ({...bindings})`），`app.js` 只做拼装；纯函数已在 `frontend/lib/`。
+
+**性质**：不修任何 bug，纯可维护性。
+
+**隐藏工作量（易被忽略）**：`check_template_bindings.mjs` 是**用正则定位单个 `return {…}` 块**的；拆成 5 个工厂后它会失效或误报——**必须先改造该脚本**，否则等于先拆护栏。约占 0.5h。
+
+**最大风险**：漏一个返回绑定 → 模板变量 `undefined` → 界面**静默空白而非报错**。因此硬依赖 §6.8.1 的可执行验证——**拆完全绿不等于界面没白**。
+
+**工作量**：视图改造 1–2h + 检查脚本改造 0.5h + 验证 0.5h ≈ 半天。
+
+**执行约束**（用户已确认的排期）：① 必须在 §6.8.1 落地后进行；② 一次拆完 5 个视图，不半拆（半拆比不拆更乱）；③ 仅在确实有持续改视图的需求时才值得做，否则是"为整洁而拆"。
+
+#### 6.8.3 CSP 去除 `'unsafe-eval'`（建议：关闭，待拍板）
+
+**事实**（已核实）：`frontend/vendor/vue.esm-browser.prod.js` 是 **Vue 3.5.42 完整版（含编译器，172KB）**，全文件唯一的执行汇点为 `s = Function("Vue", l)(oC)`，用于把 `index.html` 的 in-DOM 模板编译成渲染函数——**移除 `'unsafe-eval'` 会让四个视图全部编译失败、页面空白**。这不是配置疏忽，而是「零构建 + 模板写在 HTML 里」这个架构选择的必然代价。
+
+**收益评估（建议不做的核心理由）**：局域网威胁模型下，当前 CSP 已含 `default-src 'self'`、`object-src 'none'`、`frame-ancestors 'none'`，且**没有 `unsafe-inline'`**——注入的内联 `<script>` 与 `onerror=` 事件处理器**均已被挡住**；`unsafe-eval` 只额外影响"攻击者能拿到 `eval`/`Function` 汇点"的场景，而应用代码 `eval(` / `new Function` **0 命中**、无此类汇点。即：换来的是一层很薄的增量防护。
+
+**代价**：必须预编译模板 → 引入代码生成步骤 → **打破 README 的「零构建」核心定位**，并新增经典脚枪：改了 `index.html` 忘记重新生成 → 界面悄悄不更新（与本项目反复中招的"漂移"类 bug 同源），还得再加"CI 重新生成并 diff"的守护去堵。
+
+| 方案 | 可行性 | 代价 |
+|---|---|---|
+| 代码生成（`@vue/compiler-dom`）+ CI diff 守护 | ✅ 技术可行 | 放弃零构建 + 新增漂移面 |
+| 手写 render 函数 | ✅ | DX 崩溃，不可接受 |
+| **保持现状并在文档记录理由** | ✅ | **零** |
+
+**建议结论**：**关闭该项（won't fix）**。唯一能改变结论的前提 = 应用暴露到公网或面向不可信用户；届时再执行方案一。
 
 ---
 
