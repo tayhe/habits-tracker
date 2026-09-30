@@ -54,7 +54,7 @@ uv run ruff check .
 ```
 
 > 可选：`pre-commit install` 后，每次提交会自动跑 ruff、对拍、时钟与前端检查
-> （配置见 `.pre-commit-config.yaml`）。CI 见 `.github/workflows/ci.yml`。
+> （配置见 `.pre-commit-config.yaml`）。CI 见 `.github/workflows/ci.yml`（push 触发，已首跑通过）。
 
 ### 环境变量
 

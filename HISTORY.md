@@ -32,7 +32,7 @@
 - **前端纯函数模块化**：日期、ISO 周、表情、错误归一抽至 `frontend/lib/`，浏览器与 Node 共用同一实现。
 - **`DB_PATH` 单源**：`database.py` 不再拷贝 `config.DB_PATH`，测试只需 patch `config` 一处。
 - **迁移字典化**：`user_version` 迁移改为 `MIGRATIONS` 注册表，建表 → 迁移 → 播种顺序执行。
-- **检查脚本与 CI**：新增 `scripts/`（前后端周算法与表情对拍、前端单测、裸时钟守护）、`.pre-commit-config.yaml` 与 `.github/workflows/ci.yml`。
+- **检查脚本与 CI**：新增 `scripts/`（前后端周算法与表情对拍、前端单测、裸时钟守护）、`.pre-commit-config.yaml` 与 `.github/workflows/ci.yml`；**push 后 GitHub Actions 首跑通过**（41s，6 项检查全绿）。
 - **测试网扩容**：pytest 16 → 39（新增权限矩阵、429 端到端、安全头、契约、repo 层与 Phase 5 探针测试），另加 2225 例前后端对拍与 596 条前端断言。
 
 ### Phase 5 首批

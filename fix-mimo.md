@@ -323,7 +323,8 @@ backend/
 > 复检方式：源码 diff 审阅（`git diff 6331b41`）+ 全量 `pytest` + `ruff check` + 附录 A 脚本重跑 + 新增针对性探针
 > 第 1 轮（2026-09-30）：27 passed，判定 Phase 0 完成、1/2/3 大体完成、4 未开始
 > 第 2 轮（2026-09-30，本文档 §6.6）：**35 passed** + 2225 例前后端对拍 + 596 条前端断言，§6.4 的 N-01~N-05 全部闭环，Phase 3.5/3.6/3.8 与 Phase 4 核心项补完
-> 交付形态：**全部改动仍在工作区未提交**（18 modified + 11 untracked）
+> 第 3 轮（2026-09-30，本文档 §6.7）：**39 passed**，按阶段拆 6 个 commit 并 push，Phase 5 首批落地，GitHub Actions 首跑通过
+> 交付形态：**已提交并推送 `6331b41..4903066`（main）**，DB 快照 `data/backups/pre-fix-20260930.db`；工作区干净，CI 首跑绿
 
 ### 6.1 Bug 逐条验收
 
@@ -348,13 +349,13 @@ backend/
 | Phase | 完成度 | 已完成 | 未完成 |
 |---|---|---|---|
 | **0 止血** | **100%** | 0.1–0.6 全做（含 HISTORY `escapeHtml` 勘误、README 未来日期策略） | — |
-| **1 口径归一** | **~95%** | `repo.py` 收编 5 处 active-tasks + 4 处周聚合 + **batch 存在性校验（`repo.get_existing_active_task_ids`）**；`/records/week` **1 连接 3 查询**（有断言测试 `test_records_week_query_efficiency`）；死代码清零；索引恢复；**1.5 科目已由 `/config` 驱动**（`subjectList` / `weeklySubjects` computed，5 处硬编码 + 趋势表头表体 + 科目下拉全部改读） | multi-week 仍每周 1 次查询（1 连接，可接受，未做批量化） |
+| **1 口径归一** | **100%** | `repo.py` 收编 5 处 active-tasks + 4 处周聚合 + **batch 存在性校验（`repo.get_existing_active_task_ids`）**；`/records/week` **1 连接 3 查询**（有断言测试 `test_records_week_query_efficiency`）；死代码清零；索引恢复；**1.5 科目已由 `/config` 驱动**（`subjectList` / `weeklySubjects` computed，5 处硬编码 + 趋势表头表体 + 科目下拉全部改读）；**multi-week 批量化（§6.7）**：整段范围 1 条查询替代每周 1 条 | — |
 | **2 时钟收敛** | **100%** | `clock.py` + 全项目裸日期调用零残留 + mock 注入点；**`scripts/check_bare_dates.sh` 作为 pre-commit/CI hook**；**2.3 `cleanup` 改 `julianday()` 比较** | — |
 | **3 安全健壮** | **~95%** | 3.1 ✅ 3.2 ✅ 3.3 ✅ 3.4 ✅ 3.7 ✅ **3.5 ✅（docs 门控 / CORS 收敛 / 安全头 + CSP）** **3.6 ✅（`INITIAL_*_PASSWORD` 环境变量）** **3.8 ✅（对齐 03:00 + `logging`）** 3.9 🔶 | 3.9 CSP 仍需 `'unsafe-eval'`（零构建 Vue 运行时模板编译），已无法再收紧；`/health` DB 可写探针归入 Phase 5 |
 | **4 工程化** | **~75%** | **A-04 `DB_PATH` 单源**（`database.py` 动态读 `config.DB_PATH`，conftest 只 patch 一处，`test_seed_credentials_read_from_config` 验证）；**迁移字典 `MIGRATIONS` + 建表→迁移→播种顺序**；**对拍脚本进仓库并接 CI**（`scripts/parity_*` 2225 例）；**`parseDateLocal`**；**pre-commit + GitHub Actions**；前端纯函数拆到 `frontend/lib/`（4 模块） | **前端视图层拆分（A-06 / 4.4）未做**——在零前端测试网的前提下拆 `createApp` 视图属高风险重构，且已有浏览器冒烟验证，建议单独一轮 |
-| **5 可选** | 0% | — | 按需 |
+| **5 可选** | **~50%** | **3.10 `/health` DB 写探针 ✅**（`BEGIN IMMEDIATE`，异常 503）、**3.11 multi-week 批量化 ✅**（详见 §6.7） | CSP 去 `'unsafe-eval'`（需 runtime-only Vue + 预编译模板，与零构建定位冲突，需单独权衡） |
 
-### 6.3 测试网对照（16 → 35 项，+19）
+### 6.3 测试网对照（16 → 35 项，+19；第 3 轮后 **16 → 39 项，+23**）
 
 | 计划项 | 状态 | 说明 |
 |---|---|---|
@@ -391,7 +392,7 @@ backend/
 | 6 | Phase 4 核心（`DB_PATH` 单源 + pre-commit/CI） | ✅ | `backend/database.py`、`tests/conftest.py`、`.pre-commit-config.yaml`、`.github/workflows/ci.yml` |
 | 7 | N-03 文档同步 | ✅ | `README.md`、`HISTORY.md` v4.2、`project-conventions` skill（仓库外） |
 
-**流程提醒**：全部改动**尚未提交**。建议按阶段拆 commit（`fix: P1 归档口径与时区止血` → `refactor: repo/clock 收敛` → `fix: 安全与校验` → `chore: 检查脚本与 CI`），避免一次性大 diff 回滚困难；提交前先 `cp data/habits.db data/backups/pre-fix-$(date +%Y%m%d).db`。
+**流程提醒（已执行）**：全部改动**尚未提交**——该状态已结束，实际按 6 个 commit 分批提交（`fix` ×2 → `test` → `docs` → `feat`）并 push（`6331b41..4903066`）；提交前已做 DB 快照 `data/backups/pre-fix-20260930.db`。原始建议的 commit 拆分粒度与实际略有出入，见 §6.7。
 
 ### 6.6 第 2 轮补完记录（2026-09-30）
 
@@ -404,17 +405,17 @@ backend/
 | 裸时钟守护 | `./scripts/check_bare_dates.sh` | 通过（`backend/` 内 `date.today()` / `datetime.now()` 零命中） |
 | 前后端对拍 | `./scripts/parity_check.sh` | **2225 cases match**（1500 天周标签 + 110 例周解析 + 153 例表情分级） |
 | 前端检查 | `./scripts/check_frontend.sh` | **596 assertions** + 5 个模块语法检查 + **163 条模板绑定检查**通过 |
-| CI / 钩子 | `.github/workflows/ci.yml`、`.pre-commit-config.yaml` | YAML 校验通过（本地未实际运行 pre-commit，需先安装） |
+| CI / 钩子 | `.github/workflows/ci.yml`、`.pre-commit-config.yaml` | YAML 校验通过（本地未实际运行 pre-commit，需先安装）→ **第 3 轮已在 GitHub Actions 实跑通过**（§6.7） |
 | 运行时冒烟 | `uvicorn` 起在 `127.0.0.1:15999`（`DATA_DIR=/tmp/opencode/smoke-data`，与生产 15000 容器隔离）+ curl 全链路 | `/` 与 `/app/**`（含 `lib/*.js`）全 200；登录 200；`/config` 返回 `subjects`；缺 `reward` 的 `POST /tasks` → **422**；未来日期 → **400**；`week=garbage` → **400**；`/docs`、`/openapi.json` → **404**；响应头含 nosniff / DENY / CSP；生产容器 15000 未受影响 |
 
 > **浏览器冒烟未做**：`browser` 工具报 `No desktop browser is connected to this session`。替代验证 = 上表 curl 全链路 + `scripts/check_template_bindings.mjs`（163 条模板表达式对 `setup()` 返回值做静态交叉检查，可捕获 `v-for="sub in weeklySubject"` 这类只在运行时才暴露的笔误；已用故意注入的 typo 验证其会非零退出）。
 
 **遗留项（按优先级）**：
 
-1. **未提交**：18 modified + 11 untracked 仍在工作区，需按 §6.5 的阶段拆 commit，并先做 DB 快照。
+1. ~~**未提交**~~ ✅ **已完成（第 3 轮）**：按 §6.5 拆成 6 个 commit（`fix` ×2 → `feat` → `test` → `docs`，每个 commit 在独立 worktree 中跑过 pytest + ruff），DB 快照 `data/backups/pre-fix-20260930.db`，已 push `6331b41..4903066`。
 2. **A-06 / Phase 4.4 前端视图层拆分**：`app.js` 仍是单个 `createApp({setup})`。本轮只抽了纯函数到 `frontend/lib/`（可被 Node 复用），视图拆分在零前端测试网下风险偏高，建议单独一轮并配合浏览器冒烟。
 3. **Phase 5 剩余**：CSP 去除 `'unsafe-eval'`（需给 Vue 换 runtime-only 构建 + 预编译模板，与零构建定位冲突，需单独权衡）。~~`/health` DB 探针、multi-week 批量化~~ → 已在 §6.7 完成。
-4. **CI 首次验证**：`.github/workflows/ci.yml` 尚未在真实 runner 上跑过（本地等价命令全绿），push 后留意首跑。
+4. ~~**CI 首次验证**~~ ✅ **已完成（第 3 轮）**：run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) **41s 全绿**，ruff / pytest(39) / 裸时钟守护 / 前端单测与语法 / 对拍 2225 六项均通过；两条 annotation 仅为外部弃用提示（Node 20、ubuntu-latest 迁移）。
 5. **浏览器冒烟**：桌面端会话连接后登录，切一遍雄心/每日/战果/征途四视图，重点看趋势表列头与任务管理的科目下拉（本轮改为 `subjectList` 驱动）。
 
 ### 6.7 Phase 5 增量（同日追加）
@@ -424,6 +425,10 @@ backend/
 | **`/health` 真实就绪探针** | `SELECT 1` + `BEGIN IMMEDIATE` 写探针（`busy_timeout=3s`，卡在 compose 的 5s 超时内），返回 `db.journal_mode` / `db.schema_version`；数据库不可用 → **503**，不再是"DB 挂了也报 ok" | `test_health_reports_database_state`、`test_health_returns_503_when_database_unavailable` |
 | **`/summary/multi-week` 批量化** | 整段范围**一条** SQL + Python 按 `weeks.iso_week_label` 分桶；26 周由 26 次查询降到 1 次。`get_completion_counts` 改为对同一实现的聚合，weekly / multi-week / records 三处调用共用一个过滤条件 | `test_multi_week_matches_weekly_endpoint`（与 `/summary/weekly` 逐项对齐，含防空断言）、`test_multi_week_issues_single_records_query`（weeks=8 断言恰好 1 条 `daily_records` SELECT） |
 | **测试** | pytest **39 passed**（35 → 39）；ruff / 裸时钟 / 对拍 2225 / 前端 596+163 全绿 | — |
+| **提交与推送** | 按阶段拆 **6 个 commit**：`fix`(repo/clock/SQL 单源) → `fix`(docs 门控/CORS/安全头) → `fix`(前端错误归一/本地解析/科目 config) → `test`(+CI/pre-commit) → `docs` → `feat`(本项)；每个中间 commit 均在独立 worktree 中验证 pytest + ruff 通过后再提交 | `git log 6331b41..4903066`，工作区 clean |
+| **CI 首跑** | GitHub Actions `checks` **41s 全绿**：ruff、pytest(39)、裸时钟守护、前端单测与语法、前后端对拍 2225 六项全通过 | run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) |
+
+**当前仍待办**（详见 §6.6 遗留项）：① 浏览器四视图冒烟（桌面端未连接）② Phase 4.4 前端视图层拆分 ③ CSP 去 `'unsafe-eval'`。
 
 ---
 
@@ -484,7 +489,7 @@ git status:  clean @ 6331b41
 行数:        backend 1639 / frontend 1846 / tests 283
 ```
 
-**复检时（修复后，2026-09-30，改动未提交）**
+**第 1 轮复检时（2026-09-30，当时改动未提交）**
 ```
 pytest:      27 passed, 2 warnings   (+11)
 ruff:        All checks passed!
@@ -493,4 +498,12 @@ git status:  15 modified + 4 untracked（backend/clock.py, backend/repo.py, test
              tests/test_summary_consistency.py(75) tests/test_clock_and_security.py(90) tests/test_repo.py(60)
 裸日期调用:  grep "date.today()|datetime.now()" backend/ → 0 命中
 死代码:      grep "week-earn|WeekEarn|UserCreate|progress_bar" → 0 命中
+```
+
+**当前（第 3 轮后，2026-09-30，`4903066` 已 push）**
+```
+pytest:      39 passed, 2 warnings   (+23)
+ruff:        All checks passed!
+git status:  clean @ 4903066（main，6 个新 commit，CI 首跑绿）
+检查脚本:    check_bare_dates ✓ / parity_check 2225 ✓ / check_frontend 596+163 ✓
 ```
