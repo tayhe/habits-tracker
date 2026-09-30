@@ -1,26 +1,75 @@
 import asyncio
+import contextlib
+import logging
 import os
 import sqlite3
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, config, database
+from . import auth, clock, config, database
 from .routers import auth_router, records, summary, tasks
+
+logger = logging.getLogger("habits")
+
+# Idempotent: no-op when the host (uvicorn/pytest) already configured logging.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+
+# Basic hardening headers applied to every response. `unsafe-eval` / `unsafe-inline`
+# for script/style are required by the zero-build Vue full build (in-DOM template
+# compilation) — verified in the browser smoke test.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "font-src 'self'; "
+        "manifest-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'"
+    ),
+}
+
+
+def seconds_until_next_maintenance(hour: int | None = None) -> float:
+    """Seconds until the next daily maintenance run at `hour` (Asia/Shanghai)."""
+    hour = config.MAINTENANCE_HOUR if hour is None else hour
+    now = clock.now()
+    target = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if target <= now:
+        target = target + timedelta(days=1)
+    return (target - now).total_seconds()
 
 
 async def periodic_maintenance():
-    """Background task to run backup check and session cleanup daily."""
+    """Run backup check + session cleanup once a day, aligned to MAINTENANCE_HOUR."""
     while True:
         try:
             database.backup_database_if_needed()
             auth.cleanup_expired_sessions()
-        except Exception as e:
-            print(f"[Maintenance Error] {e}")
-        await asyncio.sleep(24 * 3600)
+        except Exception:
+            logger.exception("Periodic maintenance failed")
+        try:
+            await asyncio.sleep(seconds_until_next_maintenance())
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # Never let a scheduling error kill the loop.
+            logger.exception("Maintenance sleep failed; retrying in 1 hour")
+            await asyncio.sleep(3600)
 
 
 @asynccontextmanager
@@ -31,16 +80,26 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(periodic_maintenance())
     yield
     task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
 
 
-app = FastAPI(title="Habits Tracker API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="Habits Tracker API",
+    version="1.0.0",
+    lifespan=lifespan,
+    # Interactive API docs are disabled by default (set ENABLE_DOCS=1 to enable).
+    docs_url="/docs" if config.ENABLE_DOCS else None,
+    redoc_url="/redoc" if config.ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if config.ENABLE_DOCS else None,
+)
 
 
 @app.exception_handler(sqlite3.IntegrityError)
 async def integrity_error_handler(request, exc):
     return JSONResponse(
         status_code=409,
-        content={"detail": f"数据完整性冲突: {str(exc)}"}
+        content={"detail": f"数据完整性冲突: {str(exc)}"},
     )
 
 
@@ -49,22 +108,32 @@ async def operational_error_handler(request, exc):
     if "locked" in str(exc).lower():
         return JSONResponse(
             status_code=503,
-            content={"detail": "数据库忙，请稍后重试"}
+            content={"detail": "数据库忙，请稍后重试"},
         )
     return JSONResponse(
         status_code=500,
-        content={"detail": f"数据库操作异常: {str(exc)}"}
+        content={"detail": f"数据库操作异常: {str(exc)}"},
     )
 
 
-# CORS - allow all for LAN access (no credentials needed since frontend is same-origin)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    return response
+
+
+# CORS is disabled unless explicitly configured: the SPA is served same-origin by
+# this very app, so no cross-origin browser request is legitimate by default.
+if config.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.CORS_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Include routers
 app.include_router(auth_router.router, prefix="/api/v1")
@@ -94,9 +163,14 @@ def health():
 
 @app.get("/api/v1/config")
 def get_config():
-    return {"editable_day_window": config.EDITABLE_DAY_WINDOW}
+    return {
+        "editable_day_window": config.EDITABLE_DAY_WINDOW,
+        "subjects": config.SUBJECTS,
+    }
 
 
 if __name__ == "__main__":
     import uvicorn
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     uvicorn.run(app, host="0.0.0.0", port=config.PORT)
