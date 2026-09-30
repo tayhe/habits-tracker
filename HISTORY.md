@@ -2,6 +2,41 @@
 
 ---
 
+## 2026-09-30 v4.2 — 架构审计（fix-mimo.md）落地：口径归一、时钟收敛、安全默认值与工程化
+
+本版本对应 `fix-mimo.md` 的分阶段修复计划及其复检验收（详见该文档 §4 / §6）。
+
+### Phase 1 · 查询口径归一（P1-01）
+- **唯一 SQL 层**：新建 `backend/repo.py`，所有 Router 不再手写 SQL；归档任务的 `deleted_at IS NULL` 过滤集中于一处。
+- **周/日/趋势三端口径一致**：`/summary/weekly` 补上归档任务过滤，实测三端达标口径 6/6/6 完全一致（原为 15/14/14）。
+
+### Phase 2 · 时钟收敛（P1-02）
+- **新建 `backend/clock.py`**：时区固定 `Asia/Shanghai`，提供 `now()/now_utc()/today()`，测试可用 `set_mock_time` 注入；后端全部裸 `date.today()` / `datetime.now()` 归零，并由 `scripts/check_bare_dates.sh` 常驻守护。
+- **容器时区**：`docker-compose.yml` 与 `Dockerfile` 显式 `TZ=Asia/Shanghai`，消除「服务端今天比浏览器晚 8 小时」的错位打卡。
+
+### Phase 3 · 安全与健壮性
+- **API 攻击面收敛**：`/docs`、`/redoc`、`/openapi.json` 默认关闭（`ENABLE_DOCS=1` 才开启）；默认不下发任何 CORS 头（`CORS_ORIGINS` 显式配置才启用）。
+- **响应安全头**：统一中间件附加 `X-Content-Type-Options`、`X-Frame-Options: DENY`、`Referrer-Policy` 与 CSP（`frame-ancestors 'none'`）。
+- **初始口令环境变量化**：`INITIAL_PARENT_PASSWORD` / `INITIAL_CHILD_PASSWORD` 等仅在用户表为空时播种，生产必须覆盖。
+- **维护任务对齐 03:00**：每日备份与 Session 清理改按 `MAINTENANCE_HOUR`（Asia/Shanghai）定时，`print` 全面改为 `logging`。
+- **限速器有界内存**：`BoundedRateLimiter` 按 IP/账号双维度、条目上限 + 过期剪枝，连续 5 次失败返回 429。
+
+### Bug 修复
+- **N-01 错误提示可读化**：新建 `frontend/lib/errors.js` 的 `humanDetail()`，把 422/429 的 Pydantic `detail` 数组渲染成中文可读 Toast（原为 `[object Object]`）。
+- **N-02 创建任务契约**：`TaskCreate` 恢复 `reward` / `weekly_min` 必填，缺字段返回 422 而非静默落成 0 / 1。
+- **P2-08 UTC 解析错日**：新增 `parseDateLocal()`，替换 `new Date('YYYY-MM-DD')` 的 UTC 午夜解析（Asia/Shanghai 下会落到前一天）。
+- **N-05 权限函数更名**：`assert_editable_for_child` → `assert_editable`，反映其对 parent 未来日期同样拒绝（400）的语义。
+
+### Phase 1.5 / 4 · 结构与工程化
+- **科目由后端驱动**：前端 5 处「英语/数学/语文」硬编码改读 `/config` 的 `subjects`，`SUBJECT_INFO` 仅作展示样式兜底。
+- **前端纯函数模块化**：日期、ISO 周、表情、错误归一抽至 `frontend/lib/`，浏览器与 Node 共用同一实现。
+- **`DB_PATH` 单源**：`database.py` 不再拷贝 `config.DB_PATH`，测试只需 patch `config` 一处。
+- **迁移字典化**：`user_version` 迁移改为 `MIGRATIONS` 注册表，建表 → 迁移 → 播种顺序执行。
+- **检查脚本与 CI**：新增 `scripts/`（前后端周算法与表情对拍、前端单测、裸时钟守护）、`.pre-commit-config.yaml` 与 `.github/workflows/ci.yml`。
+- **测试网扩容**：pytest 16 → 35（新增权限矩阵、429 端到端、安全头、契约与 repo 层测试），另加 2225 例前后端对拍与 596 条前端断言。
+
+---
+
 ## 2026-09-29 v4.1 — 架构缺陷根治、ISO 周算法归一与 P0/P1 缺陷修复
 
 ### P0 缺陷止血与数据完整性保障
@@ -159,7 +194,7 @@
 
 ### 前端修复
 - 修复 Cookie forbidden header：改用 `credentials: 'same-origin'`
-- 修复 XSS 风险：添加 `escapeHtml()` 工具函数
+- 修复 XSS 风险：Vue 文本插值天然转义（早先计划的 escapeHtml 工具函数在 Vue 零构建迁移后由框架原生接管）
 - 修复空响应崩溃：`api()` 中检查 `resp.text` 后再解析
 - 修复变量遮蔽
 - 合并 week-start 函数

@@ -44,7 +44,40 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 
 # 运行自动化规则与业务单元测试
 uv run pytest
+
+# 代码风格
+uv run ruff check .
+
+# 前后端逻辑一致性对拍（ISO 周算法 + 猫猫表情）与前端纯函数单测
+./scripts/parity_check.sh
+./scripts/check_frontend.sh
 ```
+
+> 可选：`pre-commit install` 后，每次提交会自动跑 ruff、对拍、时钟与前端检查
+> （配置见 `.pre-commit-config.yaml`）。CI 见 `.github/workflows/ci.yml`。
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `PORT` | `15000` | 服务端口 |
+| `DATA_DIR` / `DB_PATH` / `BACKUP_DIR` | `./data/...` | 数据目录、数据库文件与备份目录（`DB_PATH` 是数据库路径唯一来源） |
+| `MAX_BACKUPS` | `3` | 滚动备份保留份数 |
+| `EDITABLE_DAY_WINDOW` | `7` | 小朋友可编辑的最近 N 天窗口 |
+| `INITIAL_PARENT_PASSWORD` / `INITIAL_CHILD_PASSWORD` | `parents` / `child` | **仅在用户表为空时**用于播种初始账号，生产环境务必覆盖 |
+| `INITIAL_PARENT_USERNAME` / `INITIAL_CHILD_USERNAME` | `tayhe` / `meow` | 同上，初始用户名 |
+| `COOKIE_MAX_AGE` | `2592000`（30 天） | Session Cookie 有效期（秒） |
+| `ENABLE_DOCS` | `0` | 置 `1` 才开放 `/docs`、`/redoc`、`/openapi.json` |
+| `CORS_ORIGINS` | 空（关闭） | 逗号分隔的允许跨域来源；前端默认同源托管，无需开启 |
+| `MAINTENANCE_HOUR` | `3` | 每日备份/Session 清理的执行小时（Asia/Shanghai） |
+| `TZ` | 容器内为 UTC | **必须设为 `Asia/Shanghai`**，否则服务端「今天」比浏览器晚 8 小时（compose 已内置） |
+
+### 安全默认值
+
+- 交互式 API 文档 `/docs` 默认关闭（`ENABLE_DOCS=1` 才开启）。
+- 默认不下发任何 CORS 头：前端由同一个服务同源托管，不存在合法的跨域请求。
+- 所有响应附带 `X-Content-Type-Options`、`X-Frame-Options: DENY`、`Referrer-Policy` 与 CSP（`frame-ancestors 'none'`）。
+- 登录接口按「来源 IP + 账号」双维度限速，连续 5 次失败后返回 429。
 
 ## 演示账号与权限矩阵
 
@@ -150,7 +183,7 @@ uv run pytest
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
 | `GET` | `/health` | 健康检查探针 | 公开 |
-| `GET` | `/api/v1/config` | 获取前端动态配置（如可编辑天数窗口等） | 公开 |
+| `GET` | `/api/v1/config` | 获取前端动态配置（可编辑天数窗口、科目列表 `subjects`） | 公开 |
 
 ### 认证接口 (`/auth`)
 | 方法 | 路径 | 说明 | 权限 |
@@ -174,8 +207,8 @@ uv run pytest
 | `GET` | `/records/week?date=YYYY-MM-DD` | 获取指定日期所在整周7天的全部任务打卡矩阵（含标准 ISO week 标识） | 登录用户 |
 | `GET` | `/records?date=YYYY-MM-DD` | 获取指定单日的打卡列表 | 登录用户 |
 | `GET` | `/records/range?start=&end=` | 获取指定日期范围内的打卡记录（最大跨度 93 天） | 登录用户 |
-| `PUT` | `/records` | 更新单条任务打卡状态 | 登录用户（child 仅限最近7天） |
-| `PUT` | `/records/batch` | 批量更新任务打卡状态 | 登录用户（child 仅限最近7天） |
+| `PUT` | `/records` | 更新单条任务打卡状态 | 登录用户（child 仅限最近7天且≤今天；parent 允许历史日期） |
+| `PUT` | `/records/batch` | 批量更新任务打卡状态 | 登录用户（child 仅限最近7天且≤今天；parent 允许历史日期） |
 
 ### 统计与兑现 (`/summary`)
 | 方法 | 路径 | 说明 | 权限 |
@@ -199,36 +232,50 @@ uv run pytest
 habits-tracker/
 ├── backend/          # FastAPI 后端标准包
 │   ├── __init__.py   # 标识标准 Python Package
-│   ├── main.py       # 入口、路由注册、Lifespan 周期任务与全局异常拦截
-│   ├── config.py     # 环境变量读取与配置项（端口、路径等）
-│   ├── models.py     # Pydantic 请求/响应数据模型（开启 extra='forbid'）
-│   ├── database.py   # SQLite 连接（WAL）、表初始化、版本迁移、事务与滚动备份
+│   ├── main.py       # 入口、路由注册、安全响应头、CORS 开关、Lifespan 周期任务与全局异常拦截
+│   ├── config.py     # 环境变量读取与配置项（端口、路径、安全开关、初始账号）
+│   ├── clock.py      # 时钟唯一入口（Asia/Shanghai，测试可 set_mock_time 注入）
+│   ├── models.py     # Pydantic 请求/响应模型（extra='forbid'，Create 与 Update 分离）
+│   ├── database.py   # SQLite 连接（WAL）、建表、user_version 版本迁移、播种与滚动备份
+│   ├── repo.py       # 唯一 SQL 数据访问层（Router 不再手写 SQL）
 │   ├── auth.py       # Cookie 会话鉴权与过期 Session 清理
 │   ├── weeks.py      # ISO 8601 标准周算法收敛与严格解析器
-│   ├── rules.py      # 业务核心纯函数（猫猫表情、进度条、达标收益、权限窗口）
+│   ├── rules.py      # 业务核心纯函数（猫猫表情、达标收益、assert_editable 权限窗口）
 │   └── routers/      # API 路由拆分（auth, tasks, records, summary）
 ├── frontend/         # 前端静态单页（由 FastAPI 托管，零构建 ESM）
-│   ├── index.html    # 声明式 SPA 模板
-│   ├── app.js        # Vue 3 核心业务逻辑（ISO 8601 周计算与视图响应式状态）
+│   ├── index.html    # 声明式 SPA 模板（科目列表由 /config 驱动）
+│   ├── app.js        # Vue 3 视图与响应式状态
+│   ├── lib/          # 纯函数模块：dates / iso-week / progress / errors（Node 可直接导入）
 │   ├── style.css     # Notion 极简风格样式
 │   ├── manifest.json # PWA 渐进式 Web 应用配置
 │   ├── assets/       # 图片与图标素材（PNG, SVG）
 │   └── vendor/       # 离线自托管 Vue 3 运行时
+├── scripts/          # 本地 / CI 检查脚本
+│   ├── parity_check.sh + parity_backend.py + parity_frontend.mjs  # 前后端周算法与表情对拍
+│   ├── check_frontend.sh + frontend_unit.mjs                       # 前端语法检查与纯函数单测
+│   └── check_bare_dates.sh                                         # 禁止绕过 clock.py 直接读时钟
 ├── tests/            # 自动化测试套件（pytest + TestClient）
-│   ├── conftest.py   # 临时环境隔离与认证客户端 Fixture
-│   ├── test_api_regressions.py # P0/P1 回归测试与边界校验
-│   ├── test_weeks.py # ISO 周算法属性与跨年边界对拍测试
-│   ├── test_concurrency.py     # 并发写入与 Busy Timeout 锁测试
-│   └── test_rules.py # 核心业务规则与备份轮转单元测试
+│   ├── conftest.py   # 临时库隔离 + 全局状态（mock 时钟、限速器）自动复位
+│   ├── test_api_regressions.py      # P0/P1 回归测试与边界校验
+│   ├── test_clock_and_security.py   # mock 时钟、未来日期拒绝、限速器有界性
+│   ├── test_hardening.py            # 文档关闭 / 安全头 / CORS / 权限矩阵 / 429 端到端
+│   ├── test_summary_consistency.py  # 日 / 周 / 趋势三端口径一致性
+│   ├── test_repo.py                 # repo 层查询与索引有效性
+│   ├── test_rules.py                # 业务规则与备份轮转
+│   ├── test_weeks.py                # ISO 周算法跨年边界
+│   └── test_concurrency.py          # 并发写入与 Busy Timeout 锁
+├── .github/workflows/ci.yml # CI：ruff + pytest + 对拍 + 前端检查
+├── .pre-commit-config.yaml  # 可选本地提交钩子（同一批检查）
 ├── data/             # SQLite 数据库与备份（已 gitignore）
 ├── Dockerfile        # 纯 Python 生产镜像（非 root 用户 appuser 运行）
-├── docker-compose.yml# 端口映射、卷挂载与 healthcheck 探针
+├── docker-compose.yml# 端口映射、卷挂载、TZ=Asia/Shanghai 与 healthcheck 探针
 └── pyproject.toml    # 项目依赖、测试配置与 Ruff Linter 规范
 ```
 
 ## 相关文档
 
-- [HISTORY.md](file:///home/tayhe/Projects/mine/habits-tracker/HISTORY.md) — 版本迭代历史与变更记录
+- [HISTORY.md](HISTORY.md) — 版本迭代历史与变更记录
+- [fix-mimo.md](fix-mimo.md) — 架构审计、bug 鉴定与分阶段重构计划（含复检验收记录）
 
 ## 许可证
 
