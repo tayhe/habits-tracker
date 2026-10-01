@@ -546,8 +546,8 @@ backend/
 |---|---|
 | 仓库 / 分支 | `tayhe/habits-tracker`，`main` |
 | HEAD | `main`，**工作区 clean（0 变更）**；写作时基线 `eef45e3`，本节所在提交为其后的 docs commit（以 `git log -1 --oneline` 为准） |
-| 本轮范围 | v4.1 `6331b41` → 当前 HEAD，**12 个 commit，全部已 push** |
-| CI | GitHub Actions **6 跑：5 绿 1 红**（红的那次 = N-06 测试侧时区缺陷，已修）；最近 3 跑 51s / 51s / 44s |
+| 本轮范围 | v4.1 `6331b41` → 当前 HEAD，**全部已 push**（数量：`git rev-list --count 6331b41..HEAD`） |
+| CI | GitHub Actions（push 触发，`gh run list --repo tayhe/habits-tracker` 查看）；**唯一一次红 = N-06 测试侧时区缺陷，已修复**，其余全绿，单跑约 40–50s |
 | 测试基线 | pytest **39**（`Asia/Shanghai` **与 `TZ=UTC` 都必须绿**）、`ruff` clean、对拍 **2225**、前端 **596 断言 + 163 绑定**、`template_bindings` **50 绑定**、UI 冒烟 **22 项** |
 | 部署 | Docker 容器占 **15000（勿动）**、`server:app` 8000；冒烟自带 **15999** 隔离实例 |
 | 已拍板决策 | CSP `'unsafe-eval'` **关闭 / won't fix**（重开条件与理由：§6.8.3）；视图拆分 A-06 **已完成**；浏览器冒烟已从"等桌面端"改为 **Playwright 无头** |
