@@ -19,6 +19,8 @@
 
 **一句话结论**：这个项目的"单点正确性"做得不错（周算法、并发锁、软删除都对），但**业务口径没有单一事实来源**——归档过滤、达标收益、周区间、科目常量各有 2~5 份实现，`/summary/weekly` 漏掉 `deleted_at IS NULL` 只是这类发散的第一次显形。修复重点不是打补丁，而是**先把口径收敛到一处，再补能抓住这类发散的测试**。
 
+> **✅ 本文档的修复计划已于 2026-09-30 → 10-01 执行完毕（四轮验收，Phase 0/1/2/3 全 100%）。接手者请直接跳到 §7「交接」**：当前状态快照、未完成工作与优先级、复检命令、已知的坑，可从那里继续。
+
 ---
 
 ## 1. Bug 鉴定清单
@@ -531,6 +533,90 @@ backend/
 | 可选 | 抽出 `views/daily-picker.js`（`daily.js` 215 → ~125 行） | 纯整洁项，有 22 项冒烟做门禁，风险低 |
 
 **建议顺序**：① 先做 CI 冒烟 job，把最新、也是最脆的一层防线固化 → ② 其余全部标注"条件触发"不排期，等真实需求（公网暴露 / 多实例 / 持续改视图）再启动 → ③ 本轮文档同步后，交付即完全闭环。
+
+---
+
+## 7. 交接（Handoff）— 供接手 Agent
+
+> 写于 **2026-10-01**，对应 commit `eef45e3`。**接手第一步 = 跑 §7.4 的复检命令确认基线**，然后从 §7.3 由上往下挑活。
+
+### 7.1 当前状态快照
+
+| 项 | 值 |
+|---|---|
+| 仓库 / 分支 | `tayhe/habits-tracker`，`main` |
+| HEAD | **`eef45e3`**，**工作区 clean（0 变更）** |
+| 本轮范围 | v4.1 `6331b41` → `eef45e3`，**11 个 commit，全部已 push** |
+| CI | GitHub Actions **6 跑：5 绿 1 红**（红的那次 = N-06 测试侧时区缺陷，已修）；最近 3 跑 51s / 51s / 44s |
+| 测试基线 | pytest **39**（`Asia/Shanghai` **与 `TZ=UTC` 都必须绿**）、`ruff` clean、对拍 **2225**、前端 **596 断言 + 163 绑定**、`template_bindings` **50 绑定**、UI 冒烟 **22 项** |
+| 部署 | Docker 容器占 **15000（勿动）**、`server:app` 8000；冒烟自带 **15999** 隔离实例 |
+| 已拍板决策 | CSP `'unsafe-eval'` **关闭 / won't fix**（重开条件与理由：§6.8.3）；视图拆分 A-06 **已完成**；浏览器冒烟已从"等桌面端"改为 **Playwright 无头** |
+
+### 7.2 已闭环（不要再碰）
+
+- §1 **13 个 bug 全修**（2 P1 / 6 P2 / 5 P3），逐条带复检证据（§6.1）
+- §2 架构缺陷 **9/10**（只剩 A-07，条件触发）；§3 **六类测试缺口全补**
+- 阶段：Phase 0/1/2/3 **100%**、Phase 4 **~90%**、Phase 5 **~60%**（明细 §6.2，决策 §6.8，路线 §6.9）
+
+### 7.3 未完成工作（按优先级，接手从上往下挑）
+
+| # | 项 | 触发条件 | 预估 | 怎么做 | 验收标准 |
+|---|---|---|---|---|---|
+| **1** | **CI 加 UI 冒烟 job**（唯一无条件建议做） | 无条件 | ~0.5h | `.github/workflows/ci.yml` 加 `ui-smoke` job，草案见 §7.6 | 新 job 绿；**故意改坏视图时该 job 必须变红** |
+| 2 | Phase 4.3 连接策略（A-03 尾巴） | 想把连接获取收敛成 FastAPI dependency 时 | 1–2h | dependency 提供"每请求一 conn"，替代函数内反复 `get_db()` | `test_records_week_query_efficiency` 等现有测试仍绿 |
+| 3 | Phase 5 剩余三小项 | 备份可靠性 / 可观测性有需求时 | 各 0.5–1h | ① 备份后 `PRAGMA quick_check`，失败告警 ② 结构化日志 + 请求 ID ③ 备份轮转补 53 周 / 跨年断言 | 每项配一条测试 |
+| 4 | **A-07 进程内状态**（限流字典、后台任务单例） | **仅当**要多 worker / 多实例部署 | 1d+ | 限流与后台任务外置（Redis 等） | 多进程下限流仍生效的测试 |
+| 5 | 抽出 `views/daily-picker.js` | `daily.js`（215 行）改动频繁时 | 0.5h | 浮层选择器独立成模块（−90 行） | `ui_smoke` 22 项全绿 |
+| — | ~~CSP 去 `'unsafe-eval'`~~ | **已拍板关闭**（重开条件 = 暴露公网或面向不可信用户，§6.8.3） | — | — | — |
+
+### 7.4 接手复检命令（先跑这个对齐基线）
+
+```bash
+cd ~/Projects/mine/habits-tracker
+.venv/bin/python -m pytest -q && TZ=UTC .venv/bin/python -m pytest -q   # 两次都应 39 passed
+.venv/bin/ruff check .
+./scripts/check_bare_dates.sh      # 裸时钟守护，已覆盖 tests/
+./scripts/check_frontend.sh        # node --check(app/lib/views) + 163 绑定 + 596 断言
+./scripts/parity_check.sh          # 2225 例前后端对拍
+./scripts/ui_smoke.sh              # 无头 UI 冒烟 22 项；首次需 uv run playwright install chromium
+git status --short                 # 应为空
+```
+
+推送与 CI：`git push origin main`（gh 已认证）→ `gh run list --repo tayhe/habits-tracker` → `gh run watch <id> --repo tayhe/habits-tracker --exit-status`。
+
+### 7.5 已知的坑（务必避开）
+
+1. `.venv/bin/uvicorn` 的 shebang 指向已失效的旧路径 → 用 `uv run uvicorn`。
+2. **测试里禁止 `date.today()` / `datetime.now().date()`**：宿主时区与 `clock.today()`（Asia/Shanghai）在 **16:00–24:00 UTC** 日历分叉 → **CI 每天 8 小时必挂、本地永远绿**（N-06 的教训）。`check_bare_dates.sh` 已扫描 `tests/`，测耗时仍可用 `datetime.now()`。
+3. `check_template_bindings.mjs` **只收简写属性**：`bindings: { foo: bar }` 不会被识别，必须写 `foo,`（脚本会给出该 hint）。它 union 的是 `app.js` 唯一的 `return {` + `frontend/views/*.js` 的全部 `bindings: {`。
+4. UI 冒烟端口 **15999** 与生产 **15000** 隔离：脚本每次 wipe 自己的 `DATA_DIR`（`/tmp/opencode/ui-smoke-data`），**若端口已占用会拒绝运行**（防止接管别人的实例）。
+5. 登录限流 IP:User **5 次/分** → 频繁重跑可能 429；冒烟脚本自带全新实例，限流器随进程重置。
+6. 需要在某个 commit 上单独验证时：`git worktree add -q --detach /tmp/opencode/wt-cX <commit>`，再用**绝对路径**的 `.venv/bin/python -m pytest`。
+7. 生产容器跑在 15000，本地验证一律用 15999，**不要重启/重建生产容器**。
+
+### 7.6 CI 冒烟 job 草案（#1 项可直接照做）
+
+```yaml
+  ui-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run playwright install --with-deps chromium
+      - run: ./scripts/ui_smoke.sh
+```
+
+- `ui_smoke.sh` 自带隔离实例（`127.0.0.1:15999` + 独立 `DATA_DIR`，脚本会 `mkdir -p`），runner 上无需额外配置；`uv.lock` 已含 `playwright`（dev 依赖），故用 `--frozen` 可直接装。
+- 脚本内"今天"取 `Asia/Shanghai`、后端走 `clock.py`，**在 UTC runner 上语义一致**，不受坑 #2 影响。
+- 如需留证据，加一步 `actions/upload-artifact` 上传 `/tmp/opencode/ui-smoke-shots`（逐视图截图）。
+- 预期 CI 从 ~45s 增到 **~90–120s**；若嫌慢，可给 `playwright install` 加 `cache: playwright`。
+
+### 7.7 文档同步约定（防 A-08 复发）
+
+改完代码后三处必须同步：`README.md`（结构树 / 测试清单 / 环境变量）、`HISTORY.md`（版本条目）、`fix-mimo.md`（§6 验收 + 本 §7 状态快照）。本项目已因文档漂移出过 2 次问题（A-08、N-03）。
 
 ---
 
