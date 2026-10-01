@@ -24,7 +24,9 @@ logging.basicConfig(
 
 # Basic hardening headers applied to every response. `unsafe-eval` / `unsafe-inline`
 # for script/style are required by the zero-build Vue full build (in-DOM template
-# compilation) — verified in the browser smoke test.
+# compilation) — verified in the browser smoke test. Dropping `unsafe-eval` was
+# evaluated and closed as won't fix; the trade-off and the conditions that would
+# reopen it are recorded in fix-mimo.md §6.8.3 (decided 2026-10-01).
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",

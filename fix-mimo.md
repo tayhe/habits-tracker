@@ -324,7 +324,8 @@ backend/
 > 第 1 轮（2026-09-30）：27 passed，判定 Phase 0 完成、1/2/3 大体完成、4 未开始
 > 第 2 轮（2026-09-30，本文档 §6.6）：**35 passed** + 2225 例前后端对拍 + 596 条前端断言，§6.4 的 N-01~N-05 全部闭环，Phase 3.5/3.6/3.8 与 Phase 4 核心项补完
 > 第 3 轮（2026-09-30，本文档 §6.7）：**39 passed**，按阶段拆 6 个 commit 并 push，Phase 5 首批落地，GitHub Actions 首跑通过
-> 交付形态：**已提交并推送 `6331b41..4903066`（main）**，DB 快照 `data/backups/pre-fix-20260930.db`；工作区干净，CI 首跑绿
+> 第 4 轮（2026-10-01，本文档 §6.4 N-06 / §6.8 / §6.9）：无头 UI 冒烟 22 项断言、视图层拆分（A-06）落地、CI 抓到并修复测试侧时区缺陷（N-06）、CSP 项拍板关闭
+> 交付形态：**已提交并推送 `6331b41..b916fa0`（main，共 10 个 commit）**，DB 快照 `data/backups/pre-fix-20260930.db`；工作区干净，CI 3 跑全绿
 
 ### 6.1 Bug 逐条验收
 
@@ -351,9 +352,9 @@ backend/
 | **0 止血** | **100%** | 0.1–0.6 全做（含 HISTORY `escapeHtml` 勘误、README 未来日期策略） | — |
 | **1 口径归一** | **100%** | `repo.py` 收编 5 处 active-tasks + 4 处周聚合 + **batch 存在性校验（`repo.get_existing_active_task_ids`）**；`/records/week` **1 连接 3 查询**（有断言测试 `test_records_week_query_efficiency`）；死代码清零；索引恢复；**1.5 科目已由 `/config` 驱动**（`subjectList` / `weeklySubjects` computed，5 处硬编码 + 趋势表头表体 + 科目下拉全部改读）；**multi-week 批量化（§6.7）**：整段范围 1 条查询替代每周 1 条 | — |
 | **2 时钟收敛** | **100%** | `clock.py` + 全项目裸日期调用零残留 + mock 注入点；**`scripts/check_bare_dates.sh` 作为 pre-commit/CI hook**；**2.3 `cleanup` 改 `julianday()` 比较** | — |
-| **3 安全健壮** | **~95%** | 3.1 ✅ 3.2 ✅ 3.3 ✅ 3.4 ✅ 3.7 ✅ **3.5 ✅（docs 门控 / CORS 收敛 / 安全头 + CSP）** **3.6 ✅（`INITIAL_*_PASSWORD` 环境变量）** **3.8 ✅（对齐 03:00 + `logging`）** 3.9 🔶 | 3.9 CSP 仍需 `'unsafe-eval'`（零构建 Vue 运行时模板编译），已无法再收紧；`/health` DB 可写探针归入 Phase 5 |
-| **4 工程化** | **~75%** | **A-04 `DB_PATH` 单源**（`database.py` 动态读 `config.DB_PATH`，conftest 只 patch 一处，`test_seed_credentials_read_from_config` 验证）；**迁移字典 `MIGRATIONS` + 建表→迁移→播种顺序**；**对拍脚本进仓库并接 CI**（`scripts/parity_*` 2225 例）；**`parseDateLocal`**；**pre-commit + GitHub Actions**；前端纯函数拆到 `frontend/lib/`（4 模块） | **前端视图层拆分（A-06 / 4.4）未做**——在零前端测试网的前提下拆 `createApp` 视图属高风险重构，且已有浏览器冒烟验证，建议单独一轮 |
-| **5 可选** | **~50%** | **3.10 `/health` DB 写探针 ✅**（`BEGIN IMMEDIATE`，异常 503）、**3.11 multi-week 批量化 ✅**（详见 §6.7） | CSP 去 `'unsafe-eval'`（需 runtime-only Vue + 预编译模板，与零构建定位冲突，需单独权衡） |
+| **3 安全健壮** | **100%** | 3.1 ✅ 3.2 ✅ 3.3 ✅ 3.4 ✅ 3.7 ✅ **3.5 ✅（docs 门控 / CORS 收敛 / 安全头 + CSP）** **3.6 ✅（`INITIAL_*_PASSWORD` 环境变量）** **3.8 ✅（对齐 03:00 + `logging`）** **3.9 ✅（`'unsafe-eval'` 维持——第 4 轮拍板关闭，§6.8.3）** | —（`/health` DB 可写探针已随 Phase 5 完成） |
+| **4 工程化** | **~90%** | **A-04 `DB_PATH` 单源**（`database.py` 动态读 `config.DB_PATH`，conftest 只 patch 一处，`test_seed_credentials_read_from_config` 验证）；**迁移字典 `MIGRATIONS` + 建表→迁移→播种顺序**；**对拍脚本进仓库并接 CI**（`scripts/parity_*` 2225 例）；**`parseDateLocal`**；**pre-commit + GitHub Actions**；前端纯函数拆到 `frontend/lib/`（4 模块）；**A-06 / 4.4 视图层拆分 ✅（第 4 轮）**——`app.js` 604 → 230 行、`frontend/views/` 5 模块、护栏改造 + 22 项 UI 冒烟门禁（§6.8.2） | **4.3 连接策略**（每请求一个 conn 的 dependency 化，A-03 尾巴）——热点 N+1 已修（`/records/week` 单连接 3 查询、multi-week 单查询），属结构性优化，**按需** |
+| **5 可选** | **~60%** | **3.10 `/health` DB 写探针 ✅**（`BEGIN IMMEDIATE`，异常 503）、**3.11 multi-week 批量化 ✅**（详见 §6.7）；CSP 去 `'unsafe-eval'` **已拍板关闭（§6.8.3）** | 仍按需未做：备份后 `PRAGMA quick_check`、结构化日志 + 请求 ID、备份轮转补 53 周/跨年断言 |
 
 ### 6.3 测试网对照（16 → 35 项，+19；第 3 轮后 **16 → 39 项，+23**）
 
@@ -366,7 +367,7 @@ backend/
 | T-5 week 校验 + 限流 | ✅ | week/60 上限 ✅；**登录端到端 429**（`test_login_rate_limit_returns_429`，conftest autouse 复位限速器防串测） |
 | T-6 前端对拍 + 日期解析 | ✅ | `scripts/parity_check.sh`（2225 例：周标签/周界/解析/表情）+ `scripts/frontend_unit.mjs`（596 断言，含 `parseDateLocal` 与 `humanDetail`），均已接 CI |
 
-### 6.4 本轮复检新发现（第 2 轮已全部闭环）
+### 6.4 本轮复检新发现（N-01~N-05 第 2 轮闭环；N-06 第 4 轮发现并闭环）
 
 | ID | 级别 | 问题 | 证据 | 状态 |
 |---|---|---|---|---|
@@ -375,6 +376,7 @@ backend/
 | **N-03** | P2 | **文档漂移复发（A-08）**：README 结构树缺 `repo.py`/`clock.py`，`rules.py` 描述仍写"进度条"（已删），测试清单缺 3 个新文件；HISTORY 无本轮修复条目；`project-conventions` skill 未更新 | `grep -n "repo.py\|clock.py" README.md` 无命中 | ✅ README 结构树/测试清单/环境变量表/安全默认值重写，HISTORY 新增 **v4.2** 条目，`~/.claude/skills/project-conventions/SKILL.md` 已重写为"硬约定 + 提交前检查"速查（删掉与 README 重复且已过时的结构树/表名） |
 | **N-04** | P3 | `clock.set_mock_time` 是模块级全局，靠各测试 `try/finally` 清理 → 一旦某个用例漏写，后续所有用例跑在假时间上（静默污染） | `tests/test_clock_and_security.py:12-24` | ✅ conftest 增加 autouse `_reset_global_state`，覆盖 mock 时钟与限速器两类全局状态 |
 | **N-05** | P3 | `assert_editable_for_child` 现在同时约束 parent 的未来日期，名不副实 | `rules.py:34` | ✅ 改名 `assert_editable`，docstring 明确三档规则；`records.py` 2 处调用与 `test_rules.py` 同步 |
+| **N-06** | P2 | **测试读宿主机日期而非 app 时钟**：`tests/*` 用 `date.today()`（宿主 TZ）与业务侧 `clock.today()`（Asia/Shanghai）比日期，两者在 **16:00–24:00 UTC 日历分叉** → **CI 每天有 8 小时必挂、本地（上海）永远绿**；裸时钟守护只扫 `backend/`，管不到 `tests/` | `TZ=UTC pytest tests/test_rules.py` → 1 failed；CI run `36745393050` 同样失败，而同一时刻本地 39 全绿 | ✅ 第 4 轮（`daee234`）：13 处改 `clock.today()`；`test_child_editable_window_rule` **钉死 mock 时钟**（任何 TZ 下确定）；`check_bare_dates.sh` 扩到 `tests/`（`datetime.now()` 测耗时仍允许），变异验证注入即 exit 1；`TZ=UTC` 全量 39 passed |
 
 ### 6.5 第 1 轮结论与下一步优先级（已执行完毕，保留作对照）
 
@@ -408,13 +410,13 @@ backend/
 | CI / 钩子 | `.github/workflows/ci.yml`、`.pre-commit-config.yaml` | YAML 校验通过（本地未实际运行 pre-commit，需先安装）→ **第 3 轮已在 GitHub Actions 实跑通过**（§6.7） |
 | 运行时冒烟 | `uvicorn` 起在 `127.0.0.1:15999`（`DATA_DIR=/tmp/opencode/smoke-data`，与生产 15000 容器隔离）+ curl 全链路 | `/` 与 `/app/**`（含 `lib/*.js`）全 200；登录 200；`/config` 返回 `subjects`；缺 `reward` 的 `POST /tasks` → **422**；未来日期 → **400**；`week=garbage` → **400**；`/docs`、`/openapi.json` → **404**；响应头含 nosniff / DENY / CSP；生产容器 15000 未受影响 |
 
-> **浏览器冒烟未做**：`browser` 工具报 `No desktop browser is connected to this session`。替代验证 = 上表 curl 全链路 + `scripts/check_template_bindings.mjs`（163 条模板表达式对 `setup()` 返回值做静态交叉检查，可捕获 `v-for="sub in weeklySubject"` 这类只在运行时才暴露的笔误；已用故意注入的 typo 验证其会非零退出）。
+> **浏览器冒烟未做**：`browser` 工具报 `No desktop browser is connected to this session`。替代验证 = 上表 curl 全链路 + `scripts/check_template_bindings.mjs`（163 条模板表达式对 `setup()` 返回值做静态交叉检查，可捕获 `v-for="sub in weeklySubject"` 这类只在运行时才暴露的笔误；已用故意注入的 typo 验证其会非零退出）。 **→ 已被取代**：第 4 轮落地 `scripts/ui_smoke.py` 无头浏览器冒烟（22 项断言，§6.8.1）。
 
 **遗留项（按优先级）**：
 
 1. ~~**未提交**~~ ✅ **已完成（第 3 轮）**：按 §6.5 拆成 6 个 commit（`fix` ×2 → `feat` → `test` → `docs`，每个 commit 在独立 worktree 中跑过 pytest + ruff），DB 快照 `data/backups/pre-fix-20260930.db`，已 push `6331b41..4903066`。
 2. ~~**A-06 / Phase 4.4 前端视图层拆分**~~ ✅ **已完成（§6.8.2）**：`app.js` 604 → 230 行，视图状态迁至 `frontend/views/`（5 模块），护栏先改造并经 2 次变异验证，暴露面守恒 50 绑定，无头 UI 冒烟 22/22 通过。剩余可选项：`daily.js`（215 行）内的浮层可再抽 `daily-picker.js`。
-3. **Phase 5 剩余**：CSP 去除 `'unsafe-eval'`（需给 Vue 换 runtime-only 构建 + 预编译模板，与零构建定位冲突，需单独权衡）。~~`/health` DB 探针、multi-week 批量化~~ → 已在 §6.7 完成。
+3. ~~**CSP 去除 `'unsafe-eval'`**~~ ✅ **已拍板关闭（won't fix，2026-10-01，§6.8.3）**：与零构建定位冲突且增量防护很薄，唯一重开前提 = 暴露公网。~~`/health` DB 探针、multi-week 批量化~~ → 已在 §6.7 完成。
 4. ~~**CI 首次验证**~~ ✅ **已完成（第 3 轮）**：run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) **41s 全绿**，ruff / pytest(39) / 裸时钟守护 / 前端单测与语法 / 对拍 2225 六项均通过；两条 annotation 仅为外部弃用提示（Node 20、ubuntu-latest 迁移）。
 5. ~~**浏览器冒烟**~~ ✅ **已完成（2026-10-01）**：改为 Playwright 无头方案（桌面端始终未连接），`./scripts/ui_smoke.sh` 22 项断言全过，覆盖雄心/每日/战果/征途/军令状五视图 + `subjectList` 接线 + console/HTTP 全零，并经变异验证有效。详见 §6.8.1。
 
@@ -428,7 +430,7 @@ backend/
 | **提交与推送** | 按阶段拆 **6 个 commit**：`fix`(repo/clock/SQL 单源) → `fix`(docs 门控/CORS/安全头) → `fix`(前端错误归一/本地解析/科目 config) → `test`(+CI/pre-commit) → `docs` → `feat`(本项)；每个中间 commit 均在独立 worktree 中验证 pytest + ruff 通过后再提交 | `git log 6331b41..4903066`，工作区 clean |
 | **CI 首跑** | GitHub Actions `checks` **41s 全绿**：ruff、pytest(39)、裸时钟守护、前端单测与语法、前后端对拍 2225 六项全通过 | run [`36739261620`](https://github.com/tayhe/habits-tracker/actions/runs/36739261620) |
 
-**当前仍待办**（三项的完整评估与决策见 **§6.8**）：① 浏览器冒烟 → ✅ **已完成**（Playwright 无头，22 项断言，§6.8.1）② Phase 4.4 视图层拆分 → ✅ **已完成**（`app.js` 604 → 230 行，暴露面守恒，UI 冒烟门禁通过，§6.8.2）③ CSP 去 `'unsafe-eval'` → **建议关闭，待拍板**（§6.8.3）。
+**三项遗留全部闭环**（评估与决策见 **§6.8**）：① 浏览器冒烟 → ✅ Playwright 无头 22 项断言（§6.8.1）② 视图层拆分 → ✅ `app.js` 604 → 230 行、暴露面守恒（§6.8.2）③ CSP 去 `'unsafe-eval'` → ✅ **拍板关闭（won't fix）**（§6.8.3）。**下一步建议见 §6.9。**
 
 ### 6.8 三项遗留的评估与决策（第 3 轮后续）
 
@@ -436,7 +438,7 @@ backend/
 |---|---|---|---|
 | 5 | 浏览器四视图冒烟 | ✅ **已完成**：`scripts/ui_smoke.sh` + `ui_smoke.py`（Playwright 无头 Chromium），22 项断言 + 变异验证 | §6.8.1 |
 | 2 | 前端视图层拆分（A-06 / Phase 4.4） | ✅ **已完成**：以 §6.8.1 为门禁执行，暴露面守恒（50 绑定）+ 22 项 UI 冒烟全绿 | §6.8.2 |
-| 3 | CSP 去除 `'unsafe-eval'` | ⚠️ **建议关闭（won't fix）**，待用户拍板 | §6.8.3 |
+| 3 | CSP 去除 `'unsafe-eval'` | ✅ **已拍板关闭（won't fix，2026-10-01）** | §6.8.3 |
 
 #### 6.8.1 浏览器冒烟 → Playwright 无头脚本（已选定）
 
@@ -496,7 +498,7 @@ backend/
 | **门禁（§6.8.1）** | 无头 UI 冒烟 **22/22 通过**：五视图非空渲染、趋势表头/15 行下拉 == `subjectList`、播种收益落表（W39=2.8 / W40=1.2）、console/pageerror/HTTP 全零；另 `check_frontend.sh` 扩到 `views/*.js` 的 `node --check`，pytest 39（含 `TZ=UTC` 复跑）、对拍 2225 均绿 |
 | **偏离计划** | `daily.js` **215 行 > 150 行**目标：它还含"补录任务"浮层，而浮层与 `weekData` / `loadWeekData` 强耦合，抽出需注入两个内部引用、纯增一层间接，故本轮不抽；如需可后续出 `views/daily-picker.js`（约 −90 行） |
 
-#### 6.8.3 CSP 去除 `'unsafe-eval'`（建议：关闭，待拍板）
+#### 6.8.3 CSP 去除 `'unsafe-eval'`（已拍板：关闭 / won't fix）
 
 **事实**（已核实）：`frontend/vendor/vue.esm-browser.prod.js` 是 **Vue 3.5.42 完整版（含编译器，172KB）**，全文件唯一的执行汇点为 `s = Function("Vue", l)(oC)`，用于把 `index.html` 的 in-DOM 模板编译成渲染函数——**移除 `'unsafe-eval'` 会让四个视图全部编译失败、页面空白**。这不是配置疏忽，而是「零构建 + 模板写在 HTML 里」这个架构选择的必然代价。
 
@@ -511,6 +513,24 @@ backend/
 | **保持现状并在文档记录理由** | ✅ | **零** |
 
 **建议结论**：**关闭该项（won't fix）**。唯一能改变结论的前提 = 应用暴露到公网或面向不可信用户；届时再执行方案一。
+
+**拍板记录（2026-10-01，用户决定）**：**关闭**，理由与三方案对比如上存档。**重开条件** = 应用暴露到公网或面向不可信用户 → 届时执行方案一（预编译 + CI diff 守护）。`backend/main.py` 的 CSP 保持不变，其注释已记录该取舍。
+
+---
+
+### 6.9 下一步建议（第 4 轮收尾，2026-10-01）
+
+**已闭环**：§1 全部 13 个 bug（2 P1 / 6 P2 / 5 P3）；§2 十项架构缺陷中的 A-01、A-02、A-03（主体）、A-04、A-05、**A-06（第 4 轮）**、A-08、A-09、A-10；§3 六类测试缺口（pytest **16 → 39**，另 2225 例对拍 + 596 前端断言 + 163 静态绑定 + 22 项 UI 冒烟，全部接 CI）；阶段上 Phase 0/1/2/3 **100%**、Phase 4 **~90%**、Phase 5 **~60%**。
+
+| 优先级 | 项 | 判断 |
+|---|---|---|
+| **建议做** | CI 加 UI 冒烟 job（runner 上 `playwright install chromium`） | 冒烟目前只有本地手动跑，是最新也最脆的一层防线；进 CI 才算长期门禁。约 20 行 yml，CI 41s → ~90s |
+| 按需 | Phase 4.3 连接策略（每请求一个 conn 的 dependency 化，A-03 尾巴） | 热点 N+1 已修（week 单连接、multi-week 单查询），属结构性优化，无 bug 驱动 |
+| 按需 | Phase 5 剩余：备份 `PRAGMA quick_check`、结构化日志 + 请求 ID、备份轮转 53 周/跨年断言 | 单机局域网部署下收益低，均为健壮性锦上添花 |
+| 按需 | A-07 进程内状态（限流字典 / 后台任务单例） | 仅在真要多 worker / 多实例时才有意义，**条件触发** |
+| 可选 | 抽出 `views/daily-picker.js`（`daily.js` 215 → ~125 行） | 纯整洁项，有 22 项冒烟做门禁，风险低 |
+
+**建议顺序**：① 先做 CI 冒烟 job，把最新、也是最脆的一层防线固化 → ② 其余全部标注"条件触发"不排期，等真实需求（公网暴露 / 多实例 / 持续改视图）再启动 → ③ 本轮文档同步后，交付即完全闭环。
 
 ---
 
@@ -588,4 +608,15 @@ pytest:      39 passed, 2 warnings   (+23)
 ruff:        All checks passed!
 git status:  clean @ 4903066（main，6 个新 commit，CI 首跑绿）
 检查脚本:    check_bare_dates ✓ / parity_check 2225 ✓ / check_frontend 596+163 ✓
+```
+
+**第 4 轮后（2026-10-01，`b916fa0` 已 push）**
+```
+pytest:      39 passed（Asia/Shanghai 与 TZ=UTC 两种时区均绿）
+ruff:        All checks passed!
+git status:  clean @ b916fa0（main，累计 10 个新 commit，CI 3 跑全绿）
+前端:        app.js 604 → 230 行 + frontend/views/ 5 模块（暴露面 50 绑定守恒）
+新增脚本:    scripts/ui_smoke.{sh,py}（Playwright dev 依赖，22 项断言 + 逐视图截图）
+检查脚本:    bare_dates ✓（已扩到 tests/）/ parity 2225 ✓ / frontend 596+163 ✓（含 views/ 语法）
+             template_bindings ✓ 50 绑定（多来源收集）/ ui_smoke ✓ 22 项
 ```
