@@ -163,7 +163,7 @@
 | **A-05** | **迁移机制薄弱** | `database.py:200-212`：`user_version` 在 seed 之后读取、无事务包裹、无迁移记录表、每版一个手写 `if`；无 down/回滚 | 一旦出现需要改列型/回填数据的迁移，当前骨架撑不住 |
 | **A-06** | **前端单文件巨石 + 手写日期算法 + 零测试** | `app.js` 637 行单组件、`index.html` 385 行内联模板；无 ESLint、无任何 JS 测试 | 本次对拍 1500 天**当前无漂移**，但全靠人肉维持；改一个视图要在 600 行里找状态 |
 | **A-07** | **进程内状态假设，无法水平扩展** | 限流字典（`auth_router.py:13`）、后台任务单例（`main.py:31`） | 多 worker / 多实例部署时限流失效、备份重复执行 |
-| **A-08** | **文档漂移（宣称与代码不符）** | ① HISTORY 称"添加 `escapeHtml()`"→ `app.js` 中 **0 处**（实际靠 Vue 文本插值免疫，属虚报）；② `project-conventions` skill 严重过时（端口 18765 / 单文件 index.html / `records` 表含 `user_id`，实际 15000 / 分文件 / `daily_records` 无 user_id）；③ README 权限矩阵未定义"未来日期"（P2-06） | 后续 agent/开发者按文档操作即踩坑 |
+| **A-08** | **文档漂移（宣称与代码不符）** | ① HISTORY 称"添加 `escapeHtml()`"→ `app.js` 中 **0 处**（实际靠 Vue 文本插值免疫，属虚报）；② 仓库外的一份 agent 速查文档严重过时（端口 18765 / 单文件 index.html / `records` 表含 `user_id`，实际 15000 / 分文件 / `daily_records` 无 user_id）——**该文档已废止，本文件 §7.9 取代之**；③ README 权限矩阵未定义"未来日期"（P2-06） | 后续 agent/开发者按文档操作即踩坑 |
 | **A-09** | **无 CI / pre-commit** | 仓库无 `.github/`、无 `.pre-commit-config.yaml`，ruff 与 pytest 仅手工执行 | 回归网形同虚设（本次 P1 缺陷全绿通过） |
 | **A-10** | **死代码与未接线端点** | `rules.calculate_reward`（仅测试引用）、`rules.progress_bar`（零引用）、`GET /summary/week-earn`（前端零调用，实测 200 可用）、`models.UserCreate`、`WeekEarn.total_days`、`WeekRecords.week_completed_days`（前端不用且带 P2-03 bug） | "两套收益实现"是口径漂移温床；未接线端点 = 未被测试覆盖的攻击面 |
 
@@ -375,7 +375,7 @@ backend/
 |---|---|---|---|---|
 | **N-01** | P2 | **把"静默假成功"改成了"看不懂的失败"**：后端 422 的 `detail` 是对象数组，前端 `api()` 直接 `showToast(err.detail)` → Toast 渲染 `[{'type': 'value_error', …}]` | 实测 422 detail 为 `[{type,loc,msg,input,ctx}]`；`app.js` 未做归一化 | ✅ 新建 `frontend/lib/errors.js`（`humanDetail`，字段中文标签 + 类型化渲染），429 单独分支；`frontend_unit.mjs` 8 例覆盖 |
 | **N-02** | P2 | `TaskBase` 给 `reward=0.0`、`weekly_min=1` 加了默认值 → `TaskCreate` 必填变可选，`POST /tasks` 不带 reward 返回 **200**、静默建出 0 收益任务 | 复检 `POST {"task_id","subject","name"}` → 200 | ✅ `TaskCreate` 显式覆写为必填（`TaskUpdate` 仍全可选），`test_task_create_requires_reward_and_weekly_min` 断言缺字段与显式 null 均 422 |
-| **N-03** | P2 | **文档漂移复发（A-08）**：README 结构树缺 `repo.py`/`clock.py`，`rules.py` 描述仍写"进度条"（已删），测试清单缺 3 个新文件；HISTORY 无本轮修复条目；`project-conventions` skill 未更新 | `grep -n "repo.py\|clock.py" README.md` 无命中 | ✅ README 结构树/测试清单/环境变量表/安全默认值重写，HISTORY 新增 **v4.2** 条目，`~/.claude/skills/project-conventions/SKILL.md` 已重写为"硬约定 + 提交前检查"速查（删掉与 README 重复且已过时的结构树/表名） |
+| **N-03** | P2 | **文档漂移复发（A-08）**：README 结构树缺 `repo.py`/`clock.py`，`rules.py` 描述仍写"进度条"（已删），测试清单缺 3 个新文件；HISTORY 无本轮修复条目；仓库外那份 agent 速查未更新 | `grep -n "repo.py\|clock.py" README.md` 无命中 | ✅ README 结构树/测试清单/环境变量表/安全默认值重写，HISTORY 新增 **v4.2** 条目；仓库外那份速查**已废止**，其硬约定与提交前检查统一收进本文件 **§7.9**（不再有仓库外的真相来源） |
 | **N-04** | P3 | `clock.set_mock_time` 是模块级全局，靠各测试 `try/finally` 清理 → 一旦某个用例漏写，后续所有用例跑在假时间上（静默污染） | `tests/test_clock_and_security.py:12-24` | ✅ conftest 增加 autouse `_reset_global_state`，覆盖 mock 时钟与限速器两类全局状态 |
 | **N-05** | P3 | `assert_editable_for_child` 现在同时约束 parent 的未来日期，名不副实 | `rules.py:34` | ✅ 改名 `assert_editable`，docstring 明确三档规则；`records.py` 2 处调用与 `test_rules.py` 同步 |
 | **N-06** | P2 | **测试读宿主机日期而非 app 时钟**：`tests/*` 用 `date.today()`（宿主 TZ）与业务侧 `clock.today()`（Asia/Shanghai）比日期，两者在 **16:00–24:00 UTC 日历分叉** → **CI 每天有 8 小时必挂、本地（上海）永远绿**；裸时钟守护只扫 `backend/`，管不到 `tests/` | `TZ=UTC pytest tests/test_rules.py` → 1 failed；CI run `36745393050` 同样失败，而同一时刻本地 39 全绿 | ✅ 第 4 轮（`daee234`）：13 处改 `clock.today()`；`test_child_editable_window_rule` **钉死 mock 时钟**（任何 TZ 下确定）；`check_bare_dates.sh` 扩到 `tests/`（`datetime.now()` 测耗时仍允许），变异验证注入即 exit 1；`TZ=UTC` 全量 39 passed |
@@ -394,7 +394,7 @@ backend/
 | 4 | P2-08 + T-6 `parseDateLocal` + 对拍脚本 | ✅ | `frontend/lib/dates.js`、`scripts/` |
 | 5 | Phase 1.5 科目改读 config | ✅ | `frontend/app.js`、`frontend/index.html` |
 | 6 | Phase 4 核心（`DB_PATH` 单源 + pre-commit/CI） | ✅ | `backend/database.py`、`tests/conftest.py`、`.pre-commit-config.yaml`、`.github/workflows/ci.yml` |
-| 7 | N-03 文档同步 | ✅ | `README.md`、`HISTORY.md` v4.2、`project-conventions` skill（仓库外） |
+| 7 | N-03 文档同步 | ✅ | `README.md`、`HISTORY.md` v4.2；仓库外速查废止，其内容并入本文件 §7.9 |
 
 **流程提醒（已执行）**：全部改动**尚未提交**——该状态已结束，实际按 6 个 commit 分批提交（`fix` ×2 → `test` → `docs` → `feat`）并 push（`6331b41..4903066`）；提交前已做 DB 快照 `data/backups/pre-fix-20260930.db`。原始建议的 commit 拆分粒度与实际略有出入，见 §6.7。
 
@@ -538,7 +538,7 @@ backend/
 
 ## 7. 交接（Handoff）— 供接手 Agent
 
-> 写于 **2026-10-01**（本节由紧随其后的 docs 提交加入，因此 **HEAD 一律以 `git log -1` 为准**；写作时基线为 `eef45e3`）。**接手第一步 = 跑 §7.4 的复检命令确认基线**，然后从 §7.3 由上往下挑活。
+> 写于 **2026-10-01**（本节由紧随其后的 docs 提交加入，因此 **HEAD 一律以 `git log -1` 为准**；写作时基线为 `eef45e3`）。**接手第一步 = 跑 §7.4 的复检命令确认基线**，然后从 §7.3 由上往下挑活。**动代码前先读 §7.5（已知的坑）与 §7.9（硬约定与提交前检查）—— 本仓库内的 §7.9 是唯一的 agent 速查来源。**
 
 ### 7.1 当前状态快照
 
@@ -549,7 +549,7 @@ backend/
 | 本轮范围 | v4.1 `6331b41` → 当前 HEAD，**全部已 push**（数量：`git rev-list --count 6331b41..HEAD`） |
 | CI | GitHub Actions（push 触发，`gh run list --repo tayhe/habits-tracker` 查看）；**唯一一次红 = N-06 测试侧时区缺陷，已修复**，其余全绿，单跑约 40–50s |
 | 测试基线 | pytest **39**（`Asia/Shanghai` **与 `TZ=UTC` 都必须绿**）、`ruff` clean、对拍 **2225**、前端 **596 断言 + 163 绑定**、`template_bindings` **50 绑定**、UI 冒烟 **22 项** |
-| 部署 | Docker 容器占 **15000（勿动）**、`server:app` 8000；冒烟自带 **15999** 隔离实例 |
+| 部署 | Docker 容器占 **15000（勿动）**（`Dockerfile` CMD = `uvicorn backend.main:app --port 15000`，compose `15000:15000`，`server:app`/8000 说法已废弃）；冒烟自带 **15999** 隔离实例 |
 | 已拍板决策 | CSP `'unsafe-eval'` **关闭 / won't fix**（重开条件与理由：§6.8.3）；视图拆分 A-06 **已完成**；浏览器冒烟已从"等桌面端"改为 **Playwright 无头** |
 
 ### 7.2 已闭环（不要再碰）
@@ -562,7 +562,7 @@ backend/
 
 | # | 项 | 触发条件 | 预估 | 怎么做 | 验收标准 |
 |---|---|---|---|---|---|
-| **1** | **CI 加 UI 冒烟 job**（唯一无条件建议做） | 无条件 | ~0.5h | `.github/workflows/ci.yml` 加 `ui-smoke` job，草案见 §7.6 | 新 job 绿；**故意改坏视图时该 job 必须变红** |
+| **1** | **CI 加 UI 冒烟 job**（唯一无条件建议做） | 无条件 | ~0.5h | `.github/workflows/ci.yml` 加 `ui-smoke` job，草案见 §7.7 | 新 job 绿；**故意改坏视图时该 job 必须变红** |
 | 2 | Phase 4.3 连接策略（A-03 尾巴） | 想把连接获取收敛成 FastAPI dependency 时 | 1–2h | dependency 提供"每请求一 conn"，替代函数内反复 `get_db()` | `test_records_week_query_efficiency` 等现有测试仍绿 |
 | 3 | Phase 5 剩余三小项 | 备份可靠性 / 可观测性有需求时 | 各 0.5–1h | ① 备份后 `PRAGMA quick_check`，失败告警 ② 结构化日志 + 请求 ID ③ 备份轮转补 53 周 / 跨年断言 | 每项配一条测试 |
 | 4 | **A-07 进程内状态**（限流字典、后台任务单例） | **仅当**要多 worker / 多实例部署 | 1d+ | 限流与后台任务外置（Redis 等） | 多进程下限流仍生效的测试 |
@@ -578,7 +578,7 @@ cd ~/Projects/mine/habits-tracker
 ./scripts/check_bare_dates.sh      # 裸时钟守护，已覆盖 tests/
 ./scripts/check_frontend.sh        # node --check(app/lib/views) + 163 绑定 + 596 断言
 ./scripts/parity_check.sh          # 2225 例前后端对拍
-./scripts/ui_smoke.sh              # 无头 UI 冒烟 22 项；首次需 uv run playwright install chromium
+./scripts/ui_smoke.sh              # 无头 UI 冒烟 22 项；首次需 .venv/bin/playwright install chromium
 git status --short                 # 应为空
 ```
 
@@ -593,8 +593,33 @@ git status --short                 # 应为空
 5. 登录限流 IP:User **5 次/分** → 频繁重跑可能 429；冒烟脚本自带全新实例，限流器随进程重置。
 6. 需要在某个 commit 上单独验证时：`git worktree add -q --detach /tmp/opencode/wt-cX <commit>`，再用**绝对路径**的 `.venv/bin/python -m pytest`。
 7. 生产容器跑在 15000，本地验证一律用 15999，**不要重启/重建生产容器**。
+8. **不要用手敲的 `uv run` 换依赖**：非 `--frozen` 的重新解析会挑错平台 wheel（实测把 **x86-64 的 playwright driver 装到 aarch64 机器上**，`Exec format error`，UI 冒烟直接挂）。要修就用 `uv pip install --reinstall-package playwright playwright==1.63.0`，或干脆 `uv sync --frozen`（CI 与 Dockerfile 都是这么做的，不受影响）。验证 driver 架构：`file .venv/lib/python3.12/site-packages/playwright/driver/node` 应显示 `ARM aarch64`。
+9. **归档截图里的深色药丸不是 bug**：`scripts/ui_smoke.sh` 留档的 PNG 中，军令状页靠下居中会出现一个深色圆角小块——那是应用自己的 **Toast**（`frontend/style.css:554` 的 `#toast`，背景 `#37352F`、`border-radius: 8px`、`z-index: 999`）。`ui_smoke.py` 从不点保存，所以那是个**空 toast**（实测 40×20 px = 纯内边距，`text: ''`）；带字时（如「保存成功」）约 92×39 px。原因是 `#toast` 靠 `transform: translateY(80px)` 位移隐藏而非 `visibility`，`position: fixed` 元素在全页截图（`full_page=True`）撑大画布后会被画进来。**正常 feature，用户永远看不到（它位于折叠线以下），仅影响截图观感 —— 不要当 bug 修。**
 
-### 7.6 CI 冒烟 job 草案（#1 项可直接照做）
+### 7.6 远程真实浏览器验证（CDP，非门禁）
+
+除服务器本地无头 Chromium 外，**tayhe-cloud 可以通过 CDP 驱动 tayhe-desktop 的真实 Chrome**，用于真机字体/设备/渲染的验收。配置方案见 `~/Documents/server-config/remote-chrome/`（`linux-setup.md` + `test_playwright.py`）。
+
+- **端点**：`http://100.100.1.118:9222`（Tailscale 直连，`netsh portproxy` + 防火墙放行）。实测 Chrome 154.0.8037.92。
+- **连通性自检**：`curl -s --connect-timeout 3 http://100.100.1.118:9222/json/version | python3 -m json.tool`
+- **用法**：`p.chromium.connect_over_cdp(...)` → 复用 `browser.contexts[0]` → `context.new_page()` 干活 → 只关自己的 tab → `browser.close()`（对 `connect_over_cdp` 只断开会话，**不会杀掉远端 Chrome**）。
+
+**分工（重要）**：CI 与回归门禁**仍用**服务器本地无头 Chromium——GitHub Actions runner 够不到你的台式机。本节只作「放大镜」。
+
+实测数据与坑（2026-10-01 验证）：
+
+| 项 | 实测 |
+|---|---|
+| 端到端耗时 | **87s**（本地无头 ~30s）。Tailscale RTT 实测 **~300ms**，每次 CDP 往返都吃这个延迟 |
+| 视口覆盖 | `Emulation.setDeviceMetricsOverride` **必须在 `goto` 之后下发**；放在之前不生效（`innerWidth` 仍是真实窗口 1146） |
+| 截图尺寸 | 覆盖后 JS 报告 `innerWidth=1440, dpr=1.0`，但截图实际按 **1.5 倍**输出（视口 2160×1440，全页 2138×2256）——**视口尺寸对得上、像素尺寸对不上，不能与本地 1440×960 做像素 diff** |
+| 字体 | Windows 的 CJK 字重/字距/emoji 与 Linux headless 明显不同；行高也更松（~57 vs ~44 CSS px） |
+| 扩展 | 会污染截图（LastPass 的 "Add to LastPass?" 弹窗糊住表头）。已在 Windows 侧关闭扩展；重启 Chrome 后干净 |
+| tab 隔离 | `context.new_page()` 开自己的 tab，收尾只 `page.close()`，实测不会动用户已有标签页 |
+
+**要让 Windows 够得到冒烟实例**：`scripts/ui_smoke.sh` 绑的是 `--host 127.0.0.1`，实测从 Windows **不可达**（绑 `100.100.1.1` 时 Tailscale 通、127.0.0.1 立即 UNREACHABLE）。若要走远程链路，需另起一个绑 Tailscale 地址、端口与 15000/15999 都错开的实例——注意那会把**默认口令**（`tayhe`/`parents`）暴露到 tailnet 上，只在 tailnet 内使用。
+
+### 7.7 CI 冒烟 job 草案（#1 项可直接照做）
 
 ```yaml
   ui-smoke:
@@ -605,7 +630,7 @@ git status --short                 # 应为空
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - run: uv run playwright install --with-deps chromium
+      - run: .venv/bin/playwright install --with-deps chromium
       - run: ./scripts/ui_smoke.sh
 ```
 
@@ -614,9 +639,58 @@ git status --short                 # 应为空
 - 如需留证据，加一步 `actions/upload-artifact` 上传 `/tmp/opencode/ui-smoke-shots`（逐视图截图）。
 - 预期 CI 从 ~45s 增到 **~90–120s**；若嫌慢，可给 `playwright install` 加 `cache: playwright`。
 
-### 7.7 文档同步约定（防 A-08 复发）
+### 7.8 文档同步约定（防 A-08 复发）
 
 改完代码后三处必须同步：`README.md`（结构树 / 测试清单 / 环境变量）、`HISTORY.md`（版本条目）、`fix-mimo.md`（§6 验收 + 本 §7 状态快照）。本项目已因文档漂移出过 2 次问题（A-08、N-03）。
+
+> **真相来源只在本仓库内。** 曾有一份仓库外的 agent 速查文档，因不受版本管理而连续漂移（A-08 ② / N-03），现已废止。硬约定与提交前检查以本节 **§7.9** 为准；若你在别处看到指向它的引用，忽略即可。
+
+---
+
+### 7.9 硬约定与提交前检查（改本仓库前必读）
+
+> 取代已废止的仓库外速查文档。README.md 仍是**权威**文档（结构树、API 路由、环境变量、权限矩阵、数据模型全在那边）；本节只放**仓库里看不出来就会踩坑**的东西。
+
+#### 硬约定（违反会静默出错）
+
+1. **时钟只经 `backend/clock.py`**（固定 `Asia/Shanghai`）。`backend/` 内的裸 `date.today()` / `datetime.now()` 由 `scripts/check_bare_dates.sh` 拦截；容器必须带 `TZ=Asia/Shanghai`，否则服务端「今天」比浏览器晚 8 小时，打卡会打到前一天。
+2. **SQL 只经 `backend/repo.py`**：Router 不写 SQL。归档过滤 `deleted_at IS NULL` 集中在 repo 层——P1-01 正是因为它散在 5 处、漏了一处，才让 weekly / multi-week / records.week 三个口径打出 15/14/14。
+3. **数据库路径单源 `config.DB_PATH`**：`database.py` 动态读取（不再 import 期拍快照），测试只 patch `config.DB_PATH` 一处。
+4. **日期字符串前端一律 `parseDateLocal()`**：`new Date('YYYY-MM-DD')` 按 **UTC 午夜**解析，UTC+8 下会落到前一天。
+5. **科目列表来自 `GET /api/v1/config` 的 `subjects`**：`SUBJECT_INFO` 只负责配色与 emoji 样式；DB 的 CHECK 约束是最后一道防线。
+6. **422/429 的 `detail` 可能是对象数组**：前端先过 `humanDetail()`（`frontend/lib/errors.js`）再进 Toast，否则用户看到 `[object Object]`。
+7. **测试全局状态自动复位**：mock 时钟与登录限速器由 `tests/conftest.py` 的 autouse fixture 复位，测试内**无需也不应**手工清理。
+8. **装依赖一律 `uv sync --frozen`**：手敲的 `uv run <pkg>` 之类非 frozen 重新解析会挑错平台 wheel（详见 §7.5 #8）。
+
+#### 表名（容易记错）
+
+`users` · `tasks`（含 `deleted_at` 软删除）· **`daily_records`**（不是 `records`，**也没有 `user_id`**，`UNIQUE(date, task_id)`）· `sessions` · `weekly_fulfillment`
+
+#### 角色边界
+
+任务增删改、标记兑现仅 `parent`；`child` 只能改最近 7 天窗口内且不晚于今天；**parent 也不能写未来日期（400）**；`child × tasks` 写操作一律 403。完整矩阵见 README。
+
+#### 端口与实例隔离
+
+生产容器 **15000**（勿动）；UI 冒烟自带隔离实例 **15999**（每次 wipe 自己的 `DATA_DIR`，端口被占用时**拒绝运行**）。任何手工验证都别碰生产容器。
+
+#### 提交前检查（五项全绿才算过）
+
+```bash
+.venv/bin/python -m pytest -q && .venv/bin/ruff check . \
+  && ./scripts/check_bare_dates.sh \
+  && ./scripts/check_frontend.sh \
+  && ./scripts/parity_check.sh
+```
+
+> 依赖用 `uv sync --frozen` 装，工具一律 `.venv/bin/<tool>` 直接调——**不要用 `uv run <tool>`**（会重新解析，可能装错平台 wheel，见 §7.5 #8）。§7.4 另给了 `TZ=UTC` 复跑版本，改到时钟相关代码时必须两次都绿。
+
+改动前端后另跑 `./scripts/ui_smoke.sh`（无头 UI 冒烟，22 项断言）。首次需装浏览器：`uv sync --frozen && .venv/bin/playwright install chromium`（**别用 `uv run playwright ...`** —— 手敲的 `uv run` 会重新解析并可能装错平台 wheel，见 §7.5 #8）。**审它的归档截图前先读 §7.5 #9** —— 里面那个深色药丸是 Toast，不是 bug。
+
+#### 已知的「看着像 bug 其实不是」
+
+- **归档截图里的深色药丸** = 应用自己的 `#toast`（§7.5 #9）。正常 feature，别改。
+- **`/summary/week-earn` 端点可用但前端零调用**、`rules.calculate_reward` 无人调用：有意保留的现状，不是漏接线（见 A-10）。
 
 ---
 
