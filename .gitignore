@@ -26,3 +26,13 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Android
+.gradle/
+android/.gradle/
+android/.gradle_home/
+android/.tmp/
+android/build/
+android/*/build/
+android/local.properties
+android/*.apk

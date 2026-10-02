@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">小鱼干打卡</string>
+    <string name="default_url">https://habits.linuxpocket.com/</string>
+    <string name="settings_title">打卡网站设置</string>
+    <string name="settings_hint">请输入打卡网站网址 (含 https://)</string>
+    <string name="keep_screen_on_title">保持屏幕常亮 (适合做作业/打卡)</string>
+    <string name="save">保存并刷新</string>
+    <string name="cancel">取消</string>
+    <string name="reset_default">重置为默认</string>
+    <string name="network_error_title">连接遇到问题啦</string>
+    <string name="network_error_msg">暂时无法连接到小鱼干打卡服务器，请检查网络连接或网址设置。</string>
+    <string name="retry">重新加载</string>
+    <string name="settings_button">修改网址</string>
+    <string name="exit_prompt">再按一次退出小鱼干打卡</string>
+</resources>
