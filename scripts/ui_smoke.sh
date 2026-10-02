@@ -8,7 +8,10 @@
 #     scripts/ui_smoke.sh --headed             # pass flags through to ui_smoke.py
 #     SMOKE_PORT=16999 scripts/ui_smoke.sh
 #
-# Requires: uv sync (playwright is a dev dependency) + `uv run playwright install chromium`.
+# Requires: uv sync --frozen (playwright is a dev dependency)
+#           + .venv/bin/playwright install chromium
+#           (NOT `uv run playwright ...` — non-frozen re-resolution can pick the
+#            wrong platform wheel, see fix-mimo.md §7.5 #8)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

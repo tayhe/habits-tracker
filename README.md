@@ -37,28 +37,32 @@ git clone <仓库地址>
 cd habits-tracker
 
 # 安装依赖（含开发与测试依赖）
-uv sync
+uv sync --frozen
 
 # 启动开发服务（端口 15000，开箱即用，无需配置 PYTHONPATH）
+# 注意：.venv/bin/uvicorn 的 shebang 指向旧路径，坏了；启动服务用 uv run
 uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 
 # 运行自动化规则与业务单元测试
-uv run pytest
+.venv/bin/pytest
 
 # 代码风格
-uv run ruff check .
+.venv/bin/ruff check .
 
 # 前后端逻辑一致性对拍（ISO 周算法 + 猫猫表情）与前端纯函数单测
 ./scripts/parity_check.sh
 ./scripts/check_frontend.sh
 
 # 无头 UI 冒烟（真实浏览器：登录 → 五视图渲染 → subjectList 接线 → console 零错误，逐视图截图）
-./scripts/ui_smoke.sh                 # 首次需先执行: uv run playwright install chromium
+# 首次需先执行: .venv/bin/playwright install chromium
+./scripts/ui_smoke.sh
 ```
 
 > 可选：`pre-commit install` 后，每次提交会自动跑 ruff、对拍、时钟与前端检查
-> （配置见 `.pre-commit-config.yaml`）。CI 见 `.github/workflows/ci.yml`（push 触发，已首跑通过）。
-> UI 冒烟需本机浏览器，**暂未进 CI**（作用与局限见 [fix-mimo.md](fix-mimo.md) §6.8.1）。
+> （配置见 `.pre-commit-config.yaml`）。CI 见 `.github/workflows/ci.yml`（push 触发）。
+> UI 冒烟**已进 CI**（独立 `ui-smoke` job，装无头 Chromium 后跑 `scripts/ui_smoke.sh`，
+> 失败时上传逐视图截图）；本地首次需 `.venv/bin/playwright install chromium`
+> （**别用 `uv run playwright ...`**，非 frozen 的重新解析会挑错平台 wheel，见 [fix-mimo.md](fix-mimo.md) §7.5 #8）。
 
 ### 环境变量
 

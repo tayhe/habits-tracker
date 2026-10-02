@@ -12,6 +12,8 @@ services:
       - TZ=Asia/Shanghai
     volumes:
       - ./data:/app/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:15000/health')"]
       interval: 30s

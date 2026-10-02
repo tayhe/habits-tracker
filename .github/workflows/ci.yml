@@ -25,10 +25,10 @@ jobs:
         run: uv sync --frozen
 
       - name: Lint (ruff)
-        run: uv run ruff check .
+        run: .venv/bin/ruff check .
 
       - name: Test (pytest)
-        run: uv run pytest -q
+        run: .venv/bin/pytest -q
 
       - name: "Guard - no raw clock reads outside clock.py"
         run: ./scripts/check_bare_dates.sh
@@ -38,3 +38,31 @@ jobs:
 
       - name: Frontend/backend parity (ISO week + emoji)
         run: ./scripts/parity_check.sh
+
+  ui-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync Python dependencies
+        run: uv sync --frozen
+
+      - name: Install headless Chromium (Playwright)
+        run: .venv/bin/playwright install --with-deps chromium
+
+      - name: Headless UI smoke
+        run: ./scripts/ui_smoke.sh
+
+      - name: Upload smoke screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-smoke-shots
+          path: /tmp/opencode/ui-smoke-shots
+          if-no-files-found: ignore
+          retention-days: 7
