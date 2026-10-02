@@ -62,7 +62,7 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 > （配置见 `.pre-commit-config.yaml`）。CI 见 `.github/workflows/ci.yml`（push 触发）。
 > UI 冒烟**已进 CI**（独立 `ui-smoke` job，装无头 Chromium 后跑 `scripts/ui_smoke.sh`，
 > 失败时上传逐视图截图）；本地首次需 `.venv/bin/playwright install chromium`
-> （**别用 `uv run playwright ...`**，非 frozen 的重新解析会挑错平台 wheel，见 [fix-mimo.md](fix-mimo.md) §7.5 #8）。
+> （**别用 `uv run playwright ...`**，非 frozen 的重新解析会挑错平台 wheel，见下文[常见陷阱与避坑指南](#常见陷阱与避坑指南)）。
 
 ### 环境变量
 
@@ -284,10 +284,82 @@ habits-tracker/
 └── pyproject.toml    # 项目依赖、测试配置与 Ruff Linter 规范
 ```
 
+## 开发规约与架构硬约定
+
+> **修改本仓库代码前必读**。以下约定违反会导致测试或生产静默出错：
+
+1. **时钟必须且只能经 `backend/clock.py`**：
+   - 业务逻辑固定使用 `Asia/Shanghai` 时区。
+   - 严禁在 `backend/` 与 `tests/` 中裸调 `date.today()` 或 `datetime.now().date()`（`scripts/check_bare_dates.sh` 会在 pre-commit/CI 中强制扫描拦截）。
+   - **原因**：宿主时区与 UTC 在每日 16:00–24:00 出现日历分叉，若直接使用宿主日期，会导致 CI 每天固定 8 小时红单而本地全绿。
+2. **SQL 查询必须且只能经 `backend/repo.py`**：
+   - Router 层禁止手写 SQL。归档任务过滤条件 `deleted_at IS NULL` 统一收敛在 repo 层，杜绝各端统计口径不一致。
+3. **数据库路径单源 `config.DB_PATH`**：
+   - `database.py` 动态读取 `config.DB_PATH`（非 import 期快照），测试仅需 patch `config.DB_PATH` 这一处。
+4. **前端日期字符串解析必须使用 `parseDateLocal()`**：
+   - 在 [`frontend/lib/dates.js`](frontend/lib/dates.js) 中定义。
+   - 严禁使用 `new Date('YYYY-MM-DD')`（其按 UTC 午夜解析，在东八区会偏差落入前一天）。
+5. **科目清单由后端驱动**：
+   - 来自 `GET /api/v1/config` 的 `subjects`。前端 `SUBJECT_INFO` 仅负责颜色与展示 emoji，DB 的 CHECK 约束是最后防线。
+6. **错误提示格式归一**：
+   - 后端 422/429 的 `detail` 可能是 Pydantic 对象数组，前端必须先经 [`frontend/lib/errors.js`](frontend/lib/errors.js) 的 `humanDetail()` 处理再传给 Toast，防止渲染出 `[object Object]`。
+7. **数据表命名约定**：
+   - `users`
+   - `tasks`（含 `deleted_at` 软删除）
+   - `daily_records`（注意：表名不是 `records`，且**无 `user_id`**，约束为 `UNIQUE(date, task_id)`）
+   - `sessions`
+   - `weekly_fulfillment`
+8. **角色与行为边界**：
+   - 家长（parent）：可管理任务、标记兑现、修改历史打卡，但**禁止填写未来日期（后端返回 400）**。
+   - 小朋友（child）：仅允许打卡且限制在最近 7 天窗口内（`d <= today`）；任何任务管理写操作返回 403。
+9. **端口与实例隔离**：
+   - 生产服务固定在端口 **15000**；UI 冒烟测试自带 **15999** 独立实例和专属临时数据目录（端口被占时拒绝运行以防误触生产）。
+10. **提交前必须运行的基线检查（五项全绿方可提交）**：
+    ```bash
+    .venv/bin/python -m pytest -q && .venv/bin/ruff check . \
+      && ./scripts/check_bare_dates.sh \
+      && ./scripts/check_frontend.sh \
+      && ./scripts/parity_check.sh
+    ```
+    改动前端视图代码后，需另跑 `./scripts/ui_smoke.sh`（真实无头浏览器 22 项断言）。
+
+---
+
+## 常见陷阱与避坑指南
+
+1. **依赖管理必须用 `uv sync --frozen`**：
+   - 在 ARM Linux（如 aarch64）环境上，手敲 `uv run <package>`（非 frozen 重新解析）可能会误挑 x86-64 平台的 driver wheel，导致 `Exec format error`（例如 Playwright 崩溃）。
+   - 装依赖必须用 `uv sync --frozen`；安装 Playwright 浏览器必须用 `.venv/bin/playwright install chromium`。
+2. **UI 冒烟归档截图中的深色药丸不是 Bug**：
+   - `scripts/ui_smoke.sh` 保存的全页截图中，底部居中可能会出现一个深色圆角小块。
+   - 这是应用自身的 `#toast` 元素（靠 `translateY` 隐藏），`full_page=True` 截图撑大画布时被拍进画面。在真实用户屏幕折叠线以下完全不可见，**请勿当作 UI Bug 修改**。
+3. **前端模板绑定检查规则**：
+   - `check_template_bindings.mjs` 静态交叉检查只识别简写属性语法 `bindings: { foo, bar }`，不支持 `bindings: { foo: bar }`。
+4. **CSP 保留 `'unsafe-eval'` 的架构决策**：
+   - 本项目定位于局域网/内网零构建轻量化应用，Vue 3 采用 native ESM 运行时编译器（runtime-compiler），需要动态编译模板。
+   - 经评估关闭（won't fix）：仅当系统未来暴露公网或有不可信外部用户输入时，再考虑引入打包构建流程移除 unsafe-eval。
+5. **`/summary/week-earn` 与 `rules.calculate_reward`**：
+   - 前端当前未调用该接口，系有意保留的历史端点，不是漏接线。
+
+---
+
+## 后续按需演进路线（Backlog）
+
+1. **多进程部署支持（A-07 进程内状态解耦）**：
+   - 触发条件：未来业务扩展需要 `uvicorn --workers N` 多进程部署时。
+   - 改造点：将 `BoundedRateLimiter` 内存字典和单例后台定时维护任务外置至 Redis。
+2. **连接生命周期 Dependency 化（Phase 4.3）**：
+   - 触发条件：希望将数据库连接获取进一步收敛为 FastAPI 请求级依赖注入时。
+   - 改造点：依赖提供“每请求一连接”，替代业务函数内的 `repo.get_connection()`。
+3. **运维与可观测性增强（Phase 5）**：
+   - 触发条件：对容灾备份可靠性有更高要求时。
+   - 改造点：备份后执行 `PRAGMA quick_check`、增加请求链路 ID 与结构化日志、补齐 53 周跨年轮转断言。
+
+---
+
 ## 相关文档
 
 - [HISTORY.md](HISTORY.md) — 版本迭代历史与变更记录
-- [fix-mimo.md](fix-mimo.md) — 架构审计、bug 鉴定与分阶段重构计划（含复检验收记录）
 
 ## 许可证
 

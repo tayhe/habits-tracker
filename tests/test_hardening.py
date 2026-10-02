@@ -1,4 +1,4 @@
-"""Hardening / contract tests added in the fix-mimo 复检 round (§6.4).
+"""Hardening / contract tests for API security, rate limit and data consistency.
 
 Covers the gaps the original suite had no test for:
 - API surface hardening (docs off, security headers, CORS off)

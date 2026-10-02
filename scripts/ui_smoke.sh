@@ -11,7 +11,7 @@
 # Requires: uv sync --frozen (playwright is a dev dependency)
 #           + .venv/bin/playwright install chromium
 #           (NOT `uv run playwright ...` — non-frozen re-resolution can pick the
-#            wrong platform wheel, see fix-mimo.md §7.5 #8)
+#            wrong platform wheel, see README.md 常见陷阱与避坑指南)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
