@@ -10,7 +10,7 @@
 - **收益机制**：每个任务有单次预估收益和周最低完成次数，达标后按实际完成次数计入真实收益
 - **多周趋势**：征途标签展示多周数据对比，含分科目达标率和爸爸兑现追踪
 - **修改密码**：家长和小朋友均可在页面右上角自助修改密码
-- **多设备访问**：支持局域网内任意浏览器访问，支持移动端 PWA（可直接添加到主屏幕，享受原生 App 般的全屏打卡体验）
+- **多设备访问**：支持局域网/公网内任意浏览器访问，支持移动端 PWA；提供专用安卓平板独立客户端（WebView 原生壳，支持沉浸式全屏、屏幕常亮、防误触打卡，详见 [android/README.md](android/README.md)）
 
 ## 运行与部署
 
@@ -63,6 +63,17 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 > UI 冒烟**已进 CI**（独立 `ui-smoke` job，装无头 Chromium 后跑 `scripts/ui_smoke.sh`，
 > 失败时上传逐视图截图）；本地首次需 `.venv/bin/playwright install chromium`
 > （**别用 `uv run playwright ...`**，非 frozen 的重新解析会挑错平台 wheel，见下文[常见陷阱与避坑指南](#常见陷阱与避坑指南)）。
+
+### 方式三：安卓平板客户端构建（APK）
+
+项目在 `android/` 目录下提供了专为平板定制的 Android 客户端源码。通过 Docker 封装了完整编译链，**无需在本机安装 Android SDK 或 JDK**：
+
+```bash
+# 一键构建 release 安装包
+./android/build_apk.sh
+```
+
+构建完成后生成的安装包位于 `android/habits-tracker.apk`（约 4.5MB），发送至平板即可安装。详细配置、平板优化（沉浸式全屏、常亮打卡、防误触）与隐形设置入口见 [android/README.md](android/README.md)。
 
 ### 环境变量
 

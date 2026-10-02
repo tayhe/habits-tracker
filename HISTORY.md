@@ -2,6 +2,15 @@
 
 ---
 
+## 2026-10-02 — 增加安卓平板客户端工程（WebView 原生壳与 Docker 一键打包）
+
+- **安卓平板专属优化**：新增 `android/` 独立工程，支持沉浸式全屏模式、屏幕常亮（做作业打卡不熄屏）、双击防误触退出、断网友好重试卡片与独立 Session Cookie 存储。
+- **隐形设置入口**：针对平板儿童使用场景，增加防误触机制；正常状态下轻点屏幕右上角 3 次或断网时点击按钮，可随时修改服务器网址或切换常亮。
+- **免环境 Docker 一键打包**：编写 `android/build_apk.sh`，基于官方 Android SDK 镜像完成容器化构建，直接生成 4.5MB 的独立安装包 `android/habits-tracker.apk`。
+- **工程隔离与零污染**：`.dockerignore` 与 `.gitignore` 补充完整忽略规则，保证 Web/后端业务代码 0 污染，现有全套测试保持 100% 通过。
+
+---
+
 ## 2026-10-02 v4.2.1 — CI UI 冒烟工作流与生产容器平滑部署
 
 - **CI UI 冒烟落地**：`.github/workflows/ci.yml` 新增 `ui-smoke` 独立 job，安装无头 Chromium 并执行 `scripts/ui_smoke.sh`（22 项端到端断言，失败时归档截图）。
