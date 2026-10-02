@@ -19,10 +19,14 @@ from zoneinfo import ZoneInfo
 import httpx
 
 # Support both mcp 2.x (MCPServer) and mcp 1.x (FastMCP)
+# ToolError marks a failure we anticipated: the MCP SDK forwards its message to
+# the caller, instead of masking it as a generic "Error executing tool <name>".
 try:
     from mcp.server.mcpserver import MCPServer
+    from mcp.server.mcpserver.exceptions import ToolError
 except ImportError:
     from mcp.server.fastmcp import FastMCP as MCPServer
+    from mcp.server.fastmcp.exceptions import ToolError
 
 SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
@@ -30,6 +34,16 @@ API_BASE = os.getenv("HABITS_API_BASE", "http://127.0.0.1:15000").rstrip("/")
 USERNAME = os.getenv("HABITS_USERNAME", "meow")
 PASSWORD = os.getenv("HABITS_PASSWORD", "child")
 SESSION_TOKEN = os.getenv("HABITS_SESSION_TOKEN", "")
+
+
+class AuthRejected(ToolError):
+    """The backend refused the configured credentials (HTTP 401 on login).
+
+    Kept distinct from other tool errors because no retry can clear it: the
+    caller latches the message so a misconfigured deployment stops spending
+    login attempts, which the rate limiter counts against the web UI sharing
+    this host.
+    """
 
 
 class HabitsClient:
@@ -43,9 +57,17 @@ class HabitsClient:
         self._client = httpx.Client(base_url=self.base_url, timeout=15.0)
         if self.session_token:
             self._client.cookies.set("session_token", self.session_token)
+        # Latched after a login is definitively refused. Credentials reach this
+        # process through the environment, so they can only change by starting a
+        # new process; there is nothing to gain by re-asking.
+        self._auth_error: str | None = None
 
     def login(self) -> None:
-        """Authenticate with the server and store session cookie."""
+        """Authenticate with the server and store session cookie.
+
+        Raises AuthRejected when the backend refuses the credentials, and
+        ToolError for transient failures such as 429 or 5xx.
+        """
         try:
             resp = self._client.post(
                 "/api/v1/auth/login",
@@ -53,25 +75,41 @@ class HabitsClient:
             )
             if resp.status_code != 200:
                 detail = resp.json().get("detail", resp.text) if resp.headers.get("content-type") == "application/json" else resp.text
-                raise RuntimeError(f"Habits Tracker 登录失败 (状态码 {resp.status_code}): {detail}")
+                # 401 means these credentials are wrong, which no retry repairs.
+                # 429 and 5xx are transient, so they stay ordinary ToolErrors.
+                kind = AuthRejected if resp.status_code == 401 else ToolError
+                raise kind(f"Habits Tracker 登录失败 [{resp.status_code}]: {detail}")
             # Cookie is stored automatically in self._client.cookies
         except httpx.ConnectError as err:
-            raise RuntimeError(
+            raise ToolError(
                 f"无法连接到 Habits Tracker 后端 ({self.base_url})，请确认服务已启动。"
             ) from err
 
     def request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         """Send authenticated request, retrying login once if session expired."""
+        if self._auth_error is not None:
+            # Already refused once: report it without spending another attempt.
+            raise ToolError(self._auth_error)
         try:
             resp = self._client.request(method, path, **kwargs)
         except httpx.ConnectError as err:
-            raise RuntimeError(
+            raise ToolError(
                 f"无法连接到 Habits Tracker 后端 ({self.base_url})，请确认服务已启动。"
             ) from err
 
         if resp.status_code == 401 and self.username and self.password:
-            # Re-authenticate and retry
-            self.login()
+            # A 401 here is ambiguous: the session cookie may have expired (the
+            # backend purges sessions nightly), or the credentials may be wrong.
+            # Ask for exactly one fresh login to tell those apart, and retry only
+            # when it succeeds. A refused login means every later call would
+            # refuse too, so latch it and fail without touching the network --
+            # otherwise repeated use walks into the rate limiter and locks out
+            # the web UI on this same host.
+            try:
+                self.login()
+            except AuthRejected as err:
+                self._auth_error = str(err)
+                raise ToolError(self._auth_error) from err
             resp = self._client.request(method, path, **kwargs)
 
         if resp.status_code >= 400:
@@ -82,7 +120,7 @@ class HabitsClient:
                     err_msg = str(err_data["detail"])
             except Exception:
                 pass
-            raise RuntimeError(f"接口调用失败 [{resp.status_code}]: {err_msg}")
+            raise ToolError(f"接口调用失败 [{resp.status_code}]: {err_msg}")
 
         return resp
 
