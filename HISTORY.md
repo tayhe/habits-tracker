@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-10-02 v4.2.1 — CI UI 冒烟工作流与生产容器平滑部署
+
+- **CI UI 冒烟落地**：`.github/workflows/ci.yml` 新增 `ui-smoke` 独立 job，安装无头 Chromium 并执行 `scripts/ui_smoke.sh`（22 项端到端断言，失败时归档截图）。
+- **容器时区继承优化**：`docker-compose.yml` 增加 `/etc/localtime` 与 `/etc/timezone` 只读挂载，双重保障容器时区与宿主机完全同步。
+- **生产镜像构建与上线**：完成 `habits_pre_deploy_20261002_110118.db` 备份，重新构建 Docker 镜像并平滑更新运行中容器，实测容器内部时区恢复 CST，`/health` 读写探针与安全响应头全量生效。
+
+---
+
 ## 2026-09-30 v4.2 — 架构审计（fix-mimo.md）落地：口径归一、时钟收敛、安全默认值与工程化
 
 本版本对应 `fix-mimo.md` 的分阶段修复计划及其复检验收（详见该文档 §4 / §6）。

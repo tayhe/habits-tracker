@@ -549,20 +549,22 @@ backend/
 | 本轮范围 | v4.1 `6331b41` → 当前 HEAD，**全部已 push**（数量：`git rev-list --count 6331b41..HEAD`） |
 | CI | GitHub Actions（push 触发，`gh run list --repo tayhe/habits-tracker` 查看）；**唯一一次红 = N-06 测试侧时区缺陷，已修复**，其余全绿，单跑约 40–50s |
 | 测试基线 | pytest **39**（`Asia/Shanghai` **与 `TZ=UTC` 都必须绿**）、`ruff` clean、对拍 **2225**、前端 **596 断言 + 163 绑定**、`template_bindings` **50 绑定**、UI 冒烟 **22 项** |
-| 部署 | Docker 容器占 **15000（勿动）**（`Dockerfile` CMD = `uvicorn backend.main:app --port 15000`，compose `15000:15000`，`server:app`/8000 说法已废弃）；冒烟自带 **15999** 隔离实例 |
-| 已拍板决策 | CSP `'unsafe-eval'` **关闭 / won't fix**（重开条件与理由：§6.8.3）；视图拆分 A-06 **已完成**；浏览器冒烟已从"等桌面端"改为 **Playwright 无头** |
+| 部署 | Docker 容器占 **15000（勿动）**（已于 2026-10-02 重构并重新上线，实测 CST 时区与健康探针通过，挂载宿主机 `/etc/localtime` / `/etc/timezone`）；冒烟自带 **15999** 隔离实例 |
+| 已拍板决策 | CSP `'unsafe-eval'` **关闭 / won't fix**（重开条件与理由：§6.8.3）；视图拆分 A-06 **已完成**；浏览器冒烟已从"等桌面端"改为 **Playwright 无头**；CI UI 冒烟 job **已接入** |
 
 ### 7.2 已闭环（不要再碰）
 
 - §1 **13 个 bug 全修**（2 P1 / 6 P2 / 5 P3），逐条带复检证据（§6.1）
 - §2 架构缺陷 **9/10**（只剩 A-07，条件触发）；§3 **六类测试缺口全补**
 - 阶段：Phase 0/1/2/3 **100%**、Phase 4 **~90%**、Phase 5 **~60%**（明细 §6.2，决策 §6.8，路线 §6.9）
+- **CI UI 冒烟 job 已闭环**（§7.3 #1 已完成，2026-10-02）
+- **生产容器已重新构建并平滑上线**（时区已同步 CST，健康探针正常）
 
 ### 7.3 未完成工作（按优先级，接手从上往下挑）
 
 | # | 项 | 触发条件 | 预估 | 怎么做 | 验收标准 |
 |---|---|---|---|---|---|
-| **1** | **CI 加 UI 冒烟 job**（唯一无条件建议做） | 无条件 | ~0.5h | `.github/workflows/ci.yml` 加 `ui-smoke` job，草案见 §7.7 | 新 job 绿；**故意改坏视图时该 job 必须变红** |
+| **1** | ~~**CI 加 UI 冒烟 job**~~ | **已完成（2026-10-02）** | ~0.5h | `.github/workflows/ci.yml` 加 `ui-smoke` job | Actions 触发运行，本地无头冒烟全过 |
 | 2 | Phase 4.3 连接策略（A-03 尾巴） | 想把连接获取收敛成 FastAPI dependency 时 | 1–2h | dependency 提供"每请求一 conn"，替代函数内反复 `get_db()` | `test_records_week_query_efficiency` 等现有测试仍绿 |
 | 3 | Phase 5 剩余三小项 | 备份可靠性 / 可观测性有需求时 | 各 0.5–1h | ① 备份后 `PRAGMA quick_check`，失败告警 ② 结构化日志 + 请求 ID ③ 备份轮转补 53 周 / 跨年断言 | 每项配一条测试 |
 | 4 | **A-07 进程内状态**（限流字典、后台任务单例） | **仅当**要多 worker / 多实例部署 | 1d+ | 限流与后台任务外置（Redis 等） | 多进程下限流仍生效的测试 |
