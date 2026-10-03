@@ -14,22 +14,25 @@
 6. **独立会话沙盒**：基于 Android 原生 `CookieManager` 管理 Session Cookie，与平板浏览器完全隔离。
 7. **咚咚鼠原生图标**：自动从 `frontend/assets/dedenne.png` 生成全分辨率高清 App 图标。
 
-## 快速构建安装包 (APK)
+## 获取与构建安装包 (APK)
 
-由于采用了 Docker 封装构建工具链，**你的电脑不需要配置任何 Java、Android SDK 或 Gradle 环境**。
+### 方式一：GitHub Actions 自动构建（推荐）
 
-在项目根目录下执行：
+项目已配置 GitHub Actions 自动编译工作流。**无需在本地配置任何环境或运行 Docker**：
+
+1. **自动触发**：推送或合并涉及 `android/` 目录的代码至 `main` 分支时，GitHub 会自动编译 Release APK。
+2. **手动触发**：在 GitHub 仓库页面进入 **Actions** -> 选择 **Build Android APK** -> 点击 **Run workflow** 即可随时手动触发。
+3. **下载安装包**：在构建成功的运行记录页面底部，找到 **Artifacts** 区域，点击下载 `habits-tracker-apk` 解压即可获得最新的安装包。
+
+### 方式二：本地 Docker 构建（离线备用）
+
+如需在本地离线构建，可执行：
 
 ```bash
 ./android/build_apk.sh
 ```
 
-构建完成后，生成的安装包位于：
-```
-android/habits-tracker.apk
-```
-
-直接将该 `.apk` 发送到安卓平板上安装即可使用。
+构建完成后产物将生成在 `android/habits-tracker.apk`。
 
 ## 本地 Android Studio 开发
 
