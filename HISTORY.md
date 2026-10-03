@@ -2,7 +2,15 @@
 
 ---
 
-## 2026-10-02 — 增加安卓平板客户端工程（WebView 原生壳与 Docker 一键打包）
+## 2026-10-03 — 安卓客户端编译工作流上云与「严禁本地编译」规范
+
+- **GitHub Actions 云端编译工作流**：新增 `.github/workflows/android.yml`，依托 GitHub 托管 runner 原生预装的 Android SDK 与 JDK 17，2 分钟内全自动完成 Release APK 编译，并归档至 Artifacts（`habits-tracker-apk`）供随时下载。
+- **确立「严禁本地编译」规范**：移除本地 Docker 构建脚本 `android/build_apk.sh` 与 Windows 批处理脚本，彻底避免本地拉取数 GB 镜像及产生庞大依赖缓存（清理释放 1.1GB 本地 Gradle 缓存）。
+- **文档与工程规范更新**：同步更新 `README.md` 与 `android/README.md`，明确规定安卓客户端仅通过 GitHub Actions 自动化构建，禁止在本地执行构建操作。
+
+---
+
+## 2026-10-02 — 增加安卓平板客户端工程（WebView 原生壳）
 
 - **安卓平板专属优化**：新增 `android/` 独立工程，支持沉浸式全屏模式、屏幕常亮（做作业打卡不熄屏）、双击防误触退出、断网友好重试卡片与独立 Session Cookie 存储。
 - **隐形设置入口**：针对平板儿童使用场景，增加防误触机制；正常状态下轻点屏幕右上角 3 次或断网时点击按钮，可随时修改服务器网址或切换常亮。

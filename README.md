@@ -64,16 +64,16 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 > 失败时上传逐视图截图）；本地首次需 `.venv/bin/playwright install chromium`
 > （**别用 `uv run playwright ...`**，非 frozen 的重新解析会挑错平台 wheel，见下文[常见陷阱与避坑指南](#常见陷阱与避坑指南)）。
 
-### 方式三：安卓平板客户端构建（APK）
+### 方式三：安卓平板客户端（APK）
 
-项目在 `android/` 目录下提供了专为平板定制的 Android 客户端源码。通过 Docker 封装了完整编译链，**无需在本机安装 Android SDK 或 JDK**：
+项目在 `android/` 目录下提供了专为平板定制的 Android 客户端源码。
 
-```bash
-# 一键构建 release 安装包
-./android/build_apk.sh
-```
+> [!IMPORTANT]
+> **【构建规范】严禁在本地编译 Android APK**，避免本地拉取数 GB 编译镜像及产生庞大依赖缓存。构建已全权由 **GitHub Actions 云端自动化完成**。
 
-构建完成后生成的安装包位于 `android/habits-tracker.apk`（约 4.5MB），发送至平板即可安装。详细配置、平板优化（沉浸式全屏、常亮打卡、防误触）与隐形设置入口见 [android/README.md](android/README.md)。
+- **获取安装包**：在 GitHub 仓库 **Actions** -> **Build Android APK** -> 最新成功的构建记录底部，下载 **Artifacts** (`habits-tracker-apk`) 即可获得 `app-release.apk`（约 4.5MB）。
+- **触发构建**：向 `main` 分支提交任何涉及 `android/**` 的变更，或在 Actions 页面点击 **Run workflow** 即可在 2 分钟内由云端打出最新包。
+- 平板专属优化（沉浸式全屏、常亮打卡、儿童防误触、隐形设置入口）详见 [android/README.md](android/README.md)。
 
 ### 环境变量
 
