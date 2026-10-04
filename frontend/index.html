@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="小鱼干打卡">
   <link rel="apple-touch-icon" href="/app/assets/dedenne.png">
-  <link rel="stylesheet" href="/app/style.css">
+  <link rel="stylesheet" href="/app/style.css?v=20261004_v2">
 </head>
 <body>
 
@@ -221,25 +221,54 @@
         </div>
 
         <div id="weeklyContent">
+          <!-- Overall Hero Card for 总计 -->
+          <div class="weekly-hero-card" v-if="weeklySummary && weeklySummary['总计']">
+            <div class="weekly-hero-main">
+              <div class="weekly-hero-left">
+                <div class="weekly-hero-emoji">{{ weeklySummary['总计'].emoji }}</div>
+                <div>
+                  <div class="weekly-hero-title">本周总达标率</div>
+                  <div class="weekly-hero-rate">{{ Math.round((weeklySummary['总计'].rate || 0) * 100) }}%</div>
+                </div>
+              </div>
+              <div class="weekly-hero-stats">
+                <div class="weekly-hero-stat-card">
+                  <div class="weekly-hero-stat-label">达标项目数</div>
+                  <div class="weekly-hero-stat-val">{{ weeklySummary['总计'].tasks_met }}/{{ weeklySummary['总计'].total_tasks }} 项</div>
+                </div>
+                <div class="weekly-hero-stat-card highlight">
+                  <div class="weekly-hero-stat-label">全周确认收益</div>
+                  <div class="weekly-hero-stat-val reward">🐟 {{ weeklySummary['总计'].total_reward }} 鱼干</div>
+                </div>
+              </div>
+            </div>
+            <div class="weekly-bar weekly-hero-bar">
+              <div class="weekly-bar-fill total" :style="{ width: ((weeklySummary['总计'].rate || 0) * 100) + '%' }"></div>
+            </div>
+          </div>
+
+          <!-- 4-Subject Grid -->
           <div class="weekly-grid" v-if="weeklySummary">
-            <div v-for="sub in weeklySubjects" :key="sub" class="weekly-card">
+            <div v-for="sub in subjectList" :key="sub" class="weekly-card">
               <div class="weekly-card-header" :class="SUBJECT_INFO[sub]?.class || 'total'">
-                <template v-if="sub !== '总计'">{{ SUBJECT_INFO[sub]?.emoji }} </template>{{ sub }}
+                <span>{{ SUBJECT_INFO[sub]?.emoji }} {{ sub }}</span>
+                <span class="weekly-card-badge">{{ weeklySummary[sub]?.tasks_met || 0 }}/{{ weeklySummary[sub]?.total_tasks || 0 }} 达标</span>
               </div>
               <div class="weekly-card-body">
-                <div class="weekly-stat" :class="SUBJECT_INFO[sub]?.class || 'total'">
-                  {{ weeklySummary[sub]?.tasks_met || 0 }}/{{ weeklySummary[sub]?.total_tasks || 0 }}
+                <div class="weekly-stat-row">
+                  <div class="weekly-stat" :class="SUBJECT_INFO[sub]?.class || 'total'">
+                    {{ Math.round((weeklySummary[sub]?.rate || 0) * 100) }}%
+                  </div>
+                  <div class="weekly-reward">收益: <strong>{{ weeklySummary[sub]?.total_reward || 0 }}</strong> 鱼干</div>
                 </div>
-                <div class="weekly-label">达标项目</div>
                 <div class="weekly-bar">
                   <div class="weekly-bar-fill" :class="SUBJECT_INFO[sub]?.class || 'total'" :style="{ width: ((weeklySummary[sub]?.rate || 0) * 100) + '%' }"></div>
                 </div>
-                <div class="weekly-reward">收益: <strong>{{ weeklySummary[sub]?.total_reward || 0 }}</strong> 鱼干</div>
 
                 <!-- Per-task progress -->
-                <div v-if="sub !== '总计' && weeklySummary[sub]?.tasks" class="weekly-task-progress">
+                <div v-if="weeklySummary[sub]?.tasks && weeklySummary[sub].tasks.length > 0" class="weekly-task-progress">
                   <div v-for="tp in weeklySummary[sub].tasks" :key="tp.task_id" class="weekly-task-row" :class="{ qualified: tp.qualified }">
-                    <span class="weekly-task-name">{{ tp.name }}</span>
+                    <span class="weekly-task-name" :title="tp.name">{{ tp.name }}</span>
                     <div class="weekly-task-bar">
                       <div class="weekly-task-bar-fill" :class="[SUBJECT_INFO[sub]?.class, { qualified: tp.qualified }]" :style="{ width: (tp.weekly_min > 0 ? Math.min(tp.completed_count / tp.weekly_min, 1) * 100 : 0) + '%' }"></div>
                     </div>
@@ -247,11 +276,7 @@
                     <span class="weekly-task-check">{{ tp.qualified ? '✅' : '' }}</span>
                   </div>
                 </div>
-
-                <!-- Large emoji for 总计 card -->
-                <div v-if="sub === '总计'" class="weekly-hero-emoji">
-                  {{ progressEmoji(weeklySummary[sub]?.tasks_met || 0, weeklySummary[sub]?.total_tasks || 0) }}
-                </div>
+                <div v-else class="weekly-empty-tasks">暂无活跃任务</div>
               </div>
             </div>
           </div>
@@ -375,6 +400,6 @@
   </div>
 </div>
 
-<script type="module" src="/app/app.js"></script>
+<script type="module" src="/app/app.js?v=20261004_v2"></script>
 </body>
 </html>

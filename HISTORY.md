@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-10-04 — 学科架构解耦、建立 TASKS.md 独立信源与习惯任务体系调整 (v2.0)
+
+- **数据库底层 CHECK 约束解除（v4 迁移）**：`tasks.subject` 字段移除旧基线硬编码 `CHECK(subject IN ('英语', '数学', '语文'))`，改为标准 `TEXT NOT NULL`。新增 `_migrate_to_v4` 迁移，以无缝重建方式升级生产数据库，一劳永逸解除存储层枚举限制，保留全部历史记录与外键完整性。
+- **后端科目集中配置扩展**：`backend/config.py` 中的 `SUBJECTS` 扩展为 `["英语", "数学", "语文", "体育"]`，作为全局单一真相来源（SSOT）；Pydantic 模型与所有报表（周报、多周趋势）统一经 `config.SUBJECTS` 动态驱动与校验。
+- **前端新增体育专属配色与 Emoji**：`frontend/app.js` 与 `frontend/style.css` 增加 `'体育'` 专属配置（Emoji 🏃，主题色 `#EA580C`，新增 `.chip-sports`、`.weekly-card-header.sports`、`.weekly-stat.sports` 与进度条等样式）。
+- **建立 TASKS.md 任务唯一信源**：将任务清单从 `README.md` 中完全剥离，新建 `TASKS.md` 作为全系统任务参数与规划的唯一信源。
+- **任务体系整体调整（v2.0）**：
+  - 英语：新增「听写」（0.5 鱼干/次，≥1 次/周）；
+  - 数学：软删除/归档「预习课后练习」与「计算」（无损保留历史 233 条记录，待后续重新启用），当前保留活跃 2 项；
+  - 语文：新增「听写」（0.2 鱼干/次，≥1 次/周）与「小纸条」（0.1 鱼干/次，≥5 次/周）；「阅读100」门槛从 ≥5 次/周调整为 ≥2 次/周；
+  - 体育：新增「体育5分钟」（0.2 鱼干/次，≥7 次/周）；
+  - 全局活跃任务数调整为 17 项，达标基础周收益合计 12.0 鱼干；数据库 `data/habits.db` 及预设种子已同步更新。
+- **前端静态资源防缓存与即时刷新（Cache Busting）**：为了杜绝部署新版后浏览器持久缓存旧版静态文件（导致如新增体育科目后因缓存沿用 fallback 图钉 📌 的问题），在 `backend/main.py` 的首页路由注入 `Cache-Control: no-cache, no-store, must-revalidate`，并在 `frontend/index.html` 的 CSS/JS 引用追加版本号参数（如 `?v=20261004_v2`），保障客户端无感即时加载最新界面。
+- **「一周战果」页面版式全新重构**：针对科目扩充至 4 门后旧版 4 列网格导致第 5 张卡片孤立换行破版的问题，全面重构为上下分层结构：
+  - **顶部全局战果 Hero Banner**：提炼“总计”为通栏全幅卡片，醒目呈现大号猫猫心情 Emoji、综合达标率徽标、达标任务数统计与周预计总收益；
+  - **下方 4 学科四等分网格**：英语、数学、语文、体育平整四等分排布，内嵌各科目任务进度条与达标徽章；
+  - **多端响应式适配**：在移动端与小屏平板下自动平滑回退为双列或单列流式布局，保持整洁统一。
+- **测试套件扩容**：`tests/test_api_regressions.py` 新增 `test_t08_sports_subject_lifecycle` 与 `test_t09_migration_v4_removes_check_constraint`，验证体育任务全生命周期打卡报表与 v3->v4 约束解除迁移。pytest 测试全量扩充至 41 项全绿。
+
+---
+
 ## 2026-10-03 — 安卓客户端编译工作流上云与「严禁本地编译」规范
 
 - **GitHub Actions 云端编译工作流**：新增 `.github/workflows/android.yml`，依托 GitHub 托管 runner 原生预装的 Android SDK 与 JDK 17，2 分钟内全自动完成 Release APK 编译，并归档至 Artifacts（`habits-tracker-apk`）供随时下载。

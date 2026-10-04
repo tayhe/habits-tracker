@@ -158,17 +158,15 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 15000
 |---|---|---|
 | `id` | INTEGER PRIMARY KEY | 自增主键 |
 | `task_id` | TEXT UNIQUE | 唯一英文标识（如 en_word） |
-| `subject` | TEXT | 科目：英语 / 数学 / 语文 |
+| `subject` | TEXT | 科目：英语 / 数学 / 语文 / 体育（由后端 config.SUBJECTS 集中管控，Schema v4 已解除底层 CHECK 约束） |
 | `name` | TEXT | 任务名称 |
 | `reward` | REAL | 单次收益（鱼干） |
 | `weekly_min` | INTEGER | 每周最低达标次数 |
 | `sort_weight` | INTEGER | 排序权重（数值越大越靠前） |
+| `deleted_at` | DATETIME | 软删除/归档时间戳（NULL 表示活跃） |
 | `created_at` | DATETIME | 创建时间 |
 
-**15 条系统预设任务清单：**
-* **英语（7项）**：单词（0.1/次，≥5次/周）、绘本（0.2/次，≥5次/周）、背诵（1.0/次，≥1次/周）、课（0.3/次，≥5次/周）、听力（0.1/次，≥5次/周）、阅读100（0.2/次，≥2次/周）、语法（0.5/次，≥2次/周）
-* **数学（4项）**：思维课程（0.5/次，≥2次/周）、举一反三（0.2/次，≥5次/周）、预习课后练习（0.2/次，≥4次/周）、计算（0.2/次，≥5次/周）
-* **语文（4项）**：晨读（0.1/次，≥4次/周）、课外阅读（0.2/次，≥2次/周）、书法（0.1/次，≥5次/周）、阅读100（0.1/次，≥5次/周）
+> 📌 **任务清单与规划详情**：全部任务的具体定义、唯一代码（`task_id`）、门槛与收益测算已抽离收敛至 **[TASKS.md](TASKS.md)**（系统任务唯一真实信源）。
 
 ### 3. `daily_records` 每日打卡记录表
 | 字段 | 类型 | 说明 |
@@ -311,7 +309,7 @@ habits-tracker/
    - 在 [`frontend/lib/dates.js`](frontend/lib/dates.js) 中定义。
    - 严禁使用 `new Date('YYYY-MM-DD')`（其按 UTC 午夜解析，在东八区会偏差落入前一天）。
 5. **科目清单由后端驱动**：
-   - 来自 `GET /api/v1/config` 的 `subjects`。前端 `SUBJECT_INFO` 仅负责颜色与展示 emoji，DB 的 CHECK 约束是最后防线。
+   - 来自 `GET /api/v1/config` 的 `subjects`（当前支持：英语、数学、语文、体育）。前端 `SUBJECT_INFO` 负责颜色与展示 emoji；数据库 `tasks` 表使用 `TEXT NOT NULL` 解除底层写死枚举限制（Schema v4 迁移已移除旧 CHECK 约束），由 `backend/config.py` 与 Pydantic 校验器作为单一真相来源（SSOT）集中管控合法科目。
 6. **错误提示格式归一**：
    - 后端 422/429 的 `detail` 可能是 Pydantic 对象数组，前端必须先经 [`frontend/lib/errors.js`](frontend/lib/errors.js) 的 `humanDetail()` 处理再传给 Toast，防止渲染出 `[object Object]`。
 7. **数据表命名约定**：
@@ -351,6 +349,9 @@ habits-tracker/
    - 经评估关闭（won't fix）：仅当系统未来暴露公网或有不可信外部用户输入时，再考虑引入打包构建流程移除 unsafe-eval。
 5. **`/summary/week-earn` 与 `rules.calculate_reward`**：
    - 前端当前未调用该接口，系有意保留的历史端点，不是漏接线。
+6. **前端静态资源缓存破坏（Cache Busting）**：
+   - 为避免客户端浏览器强缓存导致容器部署更新后依然加载旧版 CSS/JS（例如新增科目后旧版样式依然生效、Emoji 显示为默认图钉 📌 等），FastAPI 根路由（`/`）已注入 `Cache-Control: no-cache, no-store, must-revalidate`。
+   - 凡对 `frontend/style.css` 或 `frontend/app.js` 作出破坏性结构修改时，应在 `frontend/index.html` 中的引用链接追加或递增版本号参数（如 `?v=YYYYMMDD_vX`），确保各端无感即时获取最新界面。
 
 ---
 
@@ -370,6 +371,7 @@ habits-tracker/
 
 ## 相关文档
 
+- [TASKS.md](TASKS.md) — 任务规划清单与唯一信源（各学科项目定义、指标与收益）
 - [HISTORY.md](HISTORY.md) — 版本迭代历史与变更记录
 
 ## 许可证

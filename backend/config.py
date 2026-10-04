@@ -14,7 +14,7 @@ MAX_BACKUPS = int(os.getenv("MAX_BACKUPS", 3))
 
 COOKIE_MAX_AGE = int(os.getenv("COOKIE_MAX_AGE", 60 * 60 * 24 * 30))
 EDITABLE_DAY_WINDOW = int(os.getenv("EDITABLE_DAY_WINDOW", 7))
-SUBJECTS = ["英语", "数学", "语文"]
+SUBJECTS = ["英语", "数学", "语文", "体育"]
 
 # --- Initial credentials (seeded only when the users table is empty) ---
 # Always override in production: INITIAL_PARENT_PASSWORD=... docker compose up -d

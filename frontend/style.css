@@ -239,10 +239,12 @@
   .chip-english { background: #DBEAFE; color: #2563EB; border-color: #BFDBFE; }
   .chip-math { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
   .chip-chinese { background: #D1FAE5; color: #065F46; border-color: #A7F3D0; }
+  .chip-sports { background: #FFEDD5; color: #C2410C; border-color: #FED7AA; }
 
   .task-chip.readonly.chip-english { background: #EFF6FF; color: #93C5FD; border-color: #DBEAFE; }
   .task-chip.readonly.chip-math { background: #FFFBEB; color: #FCD34D; border-color: #FEF3C7; }
   .task-chip.readonly.chip-chinese { background: #ECFDF5; color: #6EE7B7; border-color: #D1FAE5; }
+  .task-chip.readonly.chip-sports { background: #FFF7ED; color: #FDBA74; border-color: #FFEDD5; }
 
   /* Add chip (empty area trigger) */
   .chip-add {
@@ -345,38 +347,136 @@
   }
   #weekNav2 button:hover { background: #F7F6F3; border-color: #CBCBC8; }
   #weekRange2 { font-weight: 600; font-size: 14px; color: #37352F; }
+  /* Weekly Hero Banner */
+  .weekly-hero-card {
+    background: #FAF9F6;
+    border: 1px solid #E9E9E7;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+  .weekly-hero-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .weekly-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .weekly-hero-emoji {
+    font-size: 50px;
+    line-height: 1;
+  }
+  .weekly-hero-title {
+    font-size: 13px;
+    color: #9B9A97;
+    margin-bottom: 2px;
+  }
+  .weekly-hero-rate {
+    font-size: 32px;
+    font-weight: 800;
+    color: #37352F;
+    line-height: 1.1;
+  }
+  .weekly-hero-stats {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .weekly-hero-stat-card {
+    background: #FFFFFF;
+    border: 1px solid #E9E9E7;
+    border-radius: 10px;
+    padding: 10px 18px;
+    min-width: 140px;
+    text-align: center;
+  }
+  .weekly-hero-stat-card.highlight {
+    background: #FFFBEB;
+    border-color: #FDE68A;
+  }
+  .weekly-hero-stat-label {
+    font-size: 11px;
+    color: #9B9A97;
+    margin-bottom: 2px;
+  }
+  .weekly-hero-stat-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: #37352F;
+  }
+  .weekly-hero-stat-val.reward {
+    color: #D97706;
+  }
+  .weekly-hero-bar {
+    margin-top: 14px;
+    margin-bottom: 0;
+  }
+
+  /* Weekly Subject Cards Grid */
   .weekly-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
   }
   .weekly-card {
+    background: #FFFFFF;
     border: 1px solid #E9E9E7;
     border-radius: 12px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   }
   .weekly-card-header {
-    padding: 14px;
+    padding: 12px 14px;
     font-weight: 600;
     font-size: 14px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   .weekly-card-header.english { background: #DBEAFE; color: #2563EB; }
   .weekly-card-header.math { background: #FEF3C7; color: #D97706; }
   .weekly-card-header.chinese { background: #D1FAE5; color: #059669; }
+  .weekly-card-header.sports { background: #FFEDD5; color: #EA580C; }
   .weekly-card-header.total { background: #F7F6F3; color: #37352F; }
-  .weekly-card-body { padding: 20px; text-align: center; }
+  .weekly-card-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+  }
+  .weekly-card-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .weekly-stat-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
   .weekly-stat {
-    font-size: 32px;
+    font-size: 26px;
     font-weight: 700;
-    margin-bottom: 4px;
+    line-height: 1;
   }
   .weekly-stat.english { color: #2563EB; }
   .weekly-stat.math { color: #D97706; }
   .weekly-stat.chinese { color: #059669; }
+  .weekly-stat.sports { color: #EA580C; }
   .weekly-stat.total { color: #37352F; }
   .weekly-label { font-size: 12px; color: #9B9A97; margin-bottom: 16px; }
-  .weekly-hero-emoji { font-size: 56px; margin-top: 16px; text-align: center; }
   .weekly-bar {
     height: 8px;
     background: #E9E9E7;
@@ -392,13 +492,21 @@
   .weekly-bar-fill.english { background: #2563EB; }
   .weekly-bar-fill.math { background: #D97706; }
   .weekly-bar-fill.chinese { background: #059669; }
+  .weekly-bar-fill.sports { background: #EA580C; }
   .weekly-bar-fill.total { background: #37352F; }
   .weekly-reward { font-size: 13px; color: #9B9A97; }
   .weekly-reward strong { color: #37352F; }
   .weekly-task-progress {
-    margin-top: 16px;
+    margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid #E9E9E7;
+  }
+  .weekly-empty-tasks {
+    margin-top: auto;
+    padding: 16px 0;
+    text-align: center;
+    font-size: 12px;
+    color: #9B9A97;
   }
   .weekly-task-row {
     display: flex;
@@ -433,6 +541,7 @@
   .weekly-task-bar-fill.english { background: #2563EB; }
   .weekly-task-bar-fill.math { background: #D97706; }
   .weekly-task-bar-fill.chinese { background: #059669; }
+  .weekly-task-bar-fill.sports { background: #EA580C; }
   .weekly-task-bar-fill.qualified { background: #1aae39; }
   .weekly-task-count {
     flex-shrink: 0;
@@ -757,6 +866,7 @@
   .ambition-task-bar-fill.english { background: #2563EB; }
   .ambition-task-bar-fill.math { background: #D97706; }
   .ambition-task-bar-fill.chinese { background: #059669; }
+  .ambition-task-bar-fill.sports { background: #EA580C; }
   .ambition-task-note {
     font-size: 11px;
     color: #A4A097;

@@ -9,7 +9,7 @@ from . import clock, config
 logger = logging.getLogger("habits.database")
 
 # Current schema version, also stored in `PRAGMA user_version`.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def get_connection():
@@ -103,7 +103,7 @@ def _create_schema(cursor):
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             task_id TEXT UNIQUE NOT NULL,
-            subject TEXT NOT NULL CHECK(subject IN ('英语', '数学', '语文')),
+            subject TEXT NOT NULL,
             name TEXT NOT NULL,
             reward REAL NOT NULL DEFAULT 0,
             weekly_min INTEGER NOT NULL DEFAULT 1,
@@ -174,9 +174,36 @@ def _migrate_to_v3(cursor):
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_records_date_task ON daily_records(date, task_id)")
 
 
+def _migrate_to_v4(cursor):
+    """v3 -> v4: remove hardcoded CHECK constraint on tasks.subject."""
+    cursor.execute("PRAGMA foreign_keys = OFF")
+    cursor.execute("""
+        CREATE TABLE tasks_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id TEXT UNIQUE NOT NULL,
+            subject TEXT NOT NULL,
+            name TEXT NOT NULL,
+            reward REAL NOT NULL DEFAULT 0,
+            weekly_min INTEGER NOT NULL DEFAULT 1,
+            sort_weight INTEGER NOT NULL DEFAULT 0,
+            deleted_at DATETIME DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("""
+        INSERT INTO tasks_new (id, task_id, subject, name, reward, weekly_min, sort_weight, deleted_at, created_at)
+        SELECT id, task_id, subject, name, reward, weekly_min, sort_weight, deleted_at, created_at
+        FROM tasks
+    """)
+    cursor.execute("DROP TABLE tasks")
+    cursor.execute("ALTER TABLE tasks_new RENAME TO tasks")
+    cursor.execute("PRAGMA foreign_keys = ON")
+
+
 MIGRATIONS = {
     2: _migrate_to_v2,
     3: _migrate_to_v3,
+    4: _migrate_to_v4,
 }
 
 
@@ -228,14 +255,16 @@ def _seed_initial_data(conn, cursor) -> None:
             ("en_listen", "英语", "听力", 0.1, 5, 6),
             ("en_read100", "英语", "阅读100", 0.2, 2, 5),
             ("en_grammar", "英语", "语法", 0.5, 2, 4),
+            ("en_dictation", "英语", "听写", 0.5, 1, 3),
             ("math_course", "数学", "思维课程", 0.5, 2, 13),
             ("math_extra", "数学", "举一反三", 0.2, 5, 12),
-            ("math_prac", "数学", "预习课后练习", 0.2, 4, 11),
-            ("math_calc", "数学", "计算", 0.2, 5, 10),
             ("cn_morning", "语文", "晨读", 0.1, 4, 17),
             ("cn_read", "语文", "课外阅读", 0.2, 2, 16),
             ("cn_write", "语文", "书法", 0.1, 5, 15),
-            ("cn_read100", "语文", "阅读100", 0.1, 5, 14),
+            ("cn_read100", "语文", "阅读100", 0.1, 2, 14),
+            ("cn_dictation", "语文", "听写", 0.2, 1, 13),
+            ("cn_note", "语文", "小纸条", 0.1, 5, 12),
+            ("sport_5min", "体育", "体育5分钟", 0.2, 7, 20),
         ]
         cursor.executemany(
             "INSERT INTO tasks (task_id, subject, name, reward, weekly_min, sort_weight) VALUES (?, ?, ?, ?, ?, ?)",

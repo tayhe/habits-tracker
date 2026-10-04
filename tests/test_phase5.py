@@ -41,10 +41,10 @@ def test_multi_week_matches_weekly_endpoint(parent_client):
             "task_id": "en_recite",
             "completed": True,
         })
-    for i in range(6):                   # math_calc: 6 completions last week
+    for i in range(6):                   # math_extra: 6 completions last week (min 5)
         parent_client.put("/api/v1/records", json={
             "date": (last_monday + timedelta(days=i)).isoformat(),
-            "task_id": "math_calc",
+            "task_id": "math_extra",
             "completed": True,
         })
 

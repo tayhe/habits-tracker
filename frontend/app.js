@@ -24,7 +24,8 @@ const API = '/api/v1';
 const SUBJECT_INFO = {
   '英语': { class: 'english', emoji: '🔤', color: '#2563EB' },
   '数学': { class: 'math', emoji: '🧮', color: '#D97706' },
-  '语文': { class: 'chinese', emoji: '📝', color: '#059669' }
+  '语文': { class: 'chinese', emoji: '📝', color: '#059669' },
+  '体育': { class: 'sports', emoji: '🏃', color: '#EA580C' }
 };
 
 const DEFAULT_SUBJECTS = Object.keys(SUBJECT_INFO);
